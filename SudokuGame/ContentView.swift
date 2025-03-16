@@ -60,7 +60,37 @@ struct ContentView: View {
     
     // Ekran boyutuna göre buton boyutunu ayarla
     private var numberButtonSize: CGFloat {
-        UIScreen.main.bounds.width < 400 ? 45 : 50
+        let screenWidth = UIScreen.main.bounds.width
+        if screenWidth >= 428 { // iPhone Pro Max modeller
+            return 60
+        } else if screenWidth >= 390 { // iPhone Pro modeller
+            return 55
+        } else { // iPhone mini ve standart modeller
+            return 50
+        }
+    }
+    
+    // Ekran boyutuna göre padding değerlerini ayarla
+    private var horizontalPadding: CGFloat {
+        let screenWidth = UIScreen.main.bounds.width
+        if screenWidth >= 428 { // iPhone Pro Max modeller
+            return 20
+        } else if screenWidth >= 390 { // iPhone Pro modeller
+            return 15
+        } else { // iPhone mini ve standart modeller
+            return 10
+        }
+    }
+    
+    private var buttonFontSize: CGFloat {
+        let screenWidth = UIScreen.main.bounds.width
+        if screenWidth >= 428 { // iPhone Pro Max modeller
+            return 17
+        } else if screenWidth >= 390 { // iPhone Pro modeller
+            return 15
+        } else { // iPhone mini ve standart modeller
+            return 13
+        }
     }
     
     var themeColor: Color {
@@ -97,15 +127,15 @@ struct ContentView: View {
                                 showingWelcomeScreen = true
                             }) {
                                 Image(systemName: "house.fill")
-                                    .font(.system(size: UIScreen.main.bounds.width < 400 ? 18 : 22))
+                                    .font(.system(size: UIScreen.main.bounds.width >= 390 ? 22 : 18))
                                     .foregroundColor(isDarkMode ? .white : .black)
-                                    .padding(UIScreen.main.bounds.width < 400 ? 8 : 10)
+                                    .padding(UIScreen.main.bounds.width >= 390 ? 10 : 8)
                                     .background(
                                         Circle()
                                             .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
                                     )
                             }
-                            .padding(.leading, UIScreen.main.bounds.width < 400 ? 5 : 10)
+                            .padding(.leading, horizontalPadding)
                             
                             Spacer()
                             
@@ -119,19 +149,19 @@ struct ContentView: View {
                                 showingSettings.toggle()
                             }) {
                                 Image(systemName: "gear")
-                                    .font(.system(size: UIScreen.main.bounds.width < 400 ? 18 : 22))
+                                    .font(.system(size: UIScreen.main.bounds.width >= 390 ? 22 : 18))
                                     .foregroundColor(isDarkMode ? .white : .black)
-                                    .padding(UIScreen.main.bounds.width < 400 ? 8 : 10)
+                                    .padding(UIScreen.main.bounds.width >= 390 ? 10 : 8)
                                     .background(
                                         Circle()
                                             .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
                                     )
                             }
-                            .padding(.trailing, UIScreen.main.bounds.width < 400 ? 5 : 10)
+                            .padding(.trailing, horizontalPadding)
                         }
                         
                         // Oyun bilgileri
-                        HStack(spacing: UIScreen.main.bounds.width < 400 ? 8 : 15) {
+                        HStack(spacing: UIScreen.main.bounds.width >= 390 ? 15 : 8) {
                             // Zorluk seviyesi
                             Button(action: {
                                 showingDifficultyPicker = true
@@ -141,10 +171,10 @@ struct ContentView: View {
                                         .foregroundColor(themeColor)
                                     Text(sudokuModel.difficulty.rawValue)
                                         .foregroundColor(isDarkMode ? .white : .black)
-                                        .font(.system(size: UIScreen.main.bounds.width < 400 ? 13 : 15))
+                                        .font(.system(size: buttonFontSize))
                                 }
                                 .padding(.vertical, 8)
-                                .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 8 : 12)
+                                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 12 : 8)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(themeColor.opacity(0.1))
@@ -158,10 +188,10 @@ struct ContentView: View {
                                     .foregroundColor(.red)
                                 Text("\(sudokuModel.mistakes)")
                                     .foregroundColor(isDarkMode ? .white : .black)
-                                    .font(.system(size: UIScreen.main.bounds.width < 400 ? 13 : 15))
+                                    .font(.system(size: buttonFontSize))
                             }
                             .padding(.vertical, 8)
-                            .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 8 : 12)
+                            .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 12 : 8)
                             .background(
                                 RoundedRectangle(cornerRadius: 10)
                                     .fill(Color.red.opacity(0.1))
@@ -177,10 +207,10 @@ struct ContentView: View {
                                         .foregroundColor(themeColor)
                                     Text(formatTime(sudokuModel.gameTime))
                                         .foregroundColor(isDarkMode ? .white : .black)
-                                        .font(.system(size: UIScreen.main.bounds.width < 400 ? 13 : 15))
+                                        .font(.system(size: buttonFontSize))
                                 }
                                 .padding(.vertical, 8)
-                                .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 8 : 12)
+                                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 12 : 8)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(themeColor.opacity(0.1))
@@ -188,10 +218,10 @@ struct ContentView: View {
                                 )
                             }
                         }
-                        .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 5 : 15)
+                        .padding(.horizontal, horizontalPadding)
                         
                         // Aksiyon butonları
-                        HStack(spacing: UIScreen.main.bounds.width < 400 ? 8 : 15) {
+                        HStack(spacing: UIScreen.main.bounds.width >= 390 ? 15 : 8) {
                             // Yeni oyun butonu
                             Button(action: {
                                 withAnimation {
@@ -201,11 +231,11 @@ struct ContentView: View {
                                 HStack {
                                     Image(systemName: "arrow.clockwise")
                                     Text("Yeni Oyun")
-                                        .font(.system(size: UIScreen.main.bounds.width < 400 ? 13 : 15))
+                                        .font(.system(size: buttonFontSize))
                                 }
                                 .foregroundColor(.white)
                                 .padding(.vertical, 8)
-                                .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 8 : 12)
+                                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 12 : 8)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(themeColor)
@@ -227,11 +257,11 @@ struct ContentView: View {
                                 HStack {
                                     Image(systemName: "arrow.uturn.backward")
                                     Text("Geri Al")
-                                        .font(.system(size: UIScreen.main.bounds.width < 400 ? 13 : 15))
+                                        .font(.system(size: buttonFontSize))
                                 }
                                 .foregroundColor(.white)
                                 .padding(.vertical, 8)
-                                .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 8 : 12)
+                                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 12 : 8)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(sudokuModel.canUndo ? themeColor : Color.gray)
@@ -247,11 +277,11 @@ struct ContentView: View {
                                 HStack {
                                     Image(systemName: "lightbulb.fill")
                                     Text("İpucu")
-                                        .font(.system(size: UIScreen.main.bounds.width < 400 ? 13 : 15))
+                                        .font(.system(size: buttonFontSize))
                                 }
                                 .foregroundColor(.white)
                                 .padding(.vertical, 8)
-                                .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 8 : 12)
+                                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 12 : 8)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(themeSecondaryColor)
@@ -259,7 +289,7 @@ struct ContentView: View {
                                 )
                             }
                         }
-                        .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 5 : 15)
+                        .padding(.horizontal, horizontalPadding)
                         
                         HStack(spacing: 15) {
                             // Not modu butonu
@@ -269,11 +299,11 @@ struct ContentView: View {
                                 HStack {
                                     Image(systemName: noteMode ? "pencil.circle.fill" : "pencil.circle")
                                     Text("Not Modu")
-                                        .font(.system(size: UIScreen.main.bounds.width < 400 ? 13 : 15))
+                                        .font(.system(size: buttonFontSize))
                                 }
                                 .foregroundColor(noteMode ? .white : (isDarkMode ? .white : .black))
                                 .padding(.vertical, 8)
-                                .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 8 : 12)
+                                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 12 : 8)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(noteMode ? themeColor : (isDarkMode ? Color.gray.opacity(0.3) : Color.gray.opacity(0.1)))
@@ -281,7 +311,7 @@ struct ContentView: View {
                                 )
                             }
                         }
-                        .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 5 : 15)
+                        .padding(.horizontal, horizontalPadding)
                         
                         Spacer()
                         
@@ -312,12 +342,12 @@ struct ContentView: View {
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(themeColor, lineWidth: 3)
                         )
-                        .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 2 : 5)
+                        .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 5 : 2)
                         .scaleEffect(sudokuModel.shakeGrid ? 0.95 : 1.0)
                         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: sudokuModel.shakeGrid)
                         .frame(
-                            maxWidth: UIScreen.main.bounds.width,
-                            maxHeight: UIScreen.main.bounds.width
+                            maxWidth: min(UIScreen.main.bounds.width - 10, UIScreen.main.bounds.height * 0.75),
+                            maxHeight: min(UIScreen.main.bounds.width - 10, UIScreen.main.bounds.height * 0.75)
                         )
                         .aspectRatio(1, contentMode: .fit)
                         
@@ -346,7 +376,7 @@ struct ContentView: View {
                                     selectedNumber = number
                                 }) {
                                     Text("\(number)")
-                                        .font(.system(size: 24, weight: .bold))
+                                        .font(.system(size: UIScreen.main.bounds.width >= 390 ? 28 : 24, weight: .bold))
                                         .frame(width: numberButtonSize, height: numberButtonSize)
                                         .background(
                                             RoundedRectangle(cornerRadius: 8)
@@ -358,7 +388,7 @@ struct ContentView: View {
                                 .buttonStyle(PlainButtonStyle())
                             }
                         }
-                        .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 5 : 15)
+                        .padding(.horizontal, horizontalPadding)
                         .padding(.vertical, 10)
                         
                         // Silme butonu
@@ -383,10 +413,10 @@ struct ContentView: View {
                             HStack {
                                 Image(systemName: "delete.left")
                                 Text("Sil")
-                                    .font(.system(size: UIScreen.main.bounds.width < 400 ? 14 : 16))
+                                    .font(.system(size: UIScreen.main.bounds.width >= 390 ? 16 : 14))
                             }
                             .padding(.vertical, 8)
-                            .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 15 : 20)
+                            .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 20 : 15)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(Color.red.opacity(0.8))
@@ -394,7 +424,7 @@ struct ContentView: View {
                             .foregroundColor(.white)
                             .shadow(color: Color.red.opacity(0.3), radius: 2, x: 0, y: 1)
                         }
-                        .padding(.bottom, UIScreen.main.bounds.width < 400 ? 10 : 15)
+                        .padding(.bottom, UIScreen.main.bounds.width >= 390 ? 15 : 10)
                     }
                 }
             }
@@ -590,7 +620,7 @@ struct SudokuBlock: View {
         .padding(3)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(isDarkMode ? Color.gray.opacity(0.8) : Color.gray.opacity(0.7), lineWidth: 3)
+                .stroke(isDarkMode ? Color.gray.opacity(0.8) : Color.gray.opacity(0.7), lineWidth: 4)
         )
     }
 }
@@ -608,8 +638,17 @@ struct SudokuCellView: View {
     
     private var cellSize: CGFloat {
         // Ekran boyutuna göre hücre boyutunu ayarla
-        let baseSize: CGFloat = UIScreen.main.bounds.width < 400 ? 38 : 45
-        return horizontalSizeClass == .compact ? baseSize : baseSize + 5
+        let screenWidth = UIScreen.main.bounds.width
+        let screenHeight = UIScreen.main.bounds.height
+        let minDimension = min(screenWidth, screenHeight)
+        
+        if screenWidth >= 428 { // iPhone Pro Max modeller
+            return minDimension / 10
+        } else if screenWidth >= 390 { // iPhone Pro modeller
+            return minDimension / 10.5
+        } else { // iPhone mini ve standart modeller
+            return minDimension / 11
+        }
     }
     
     private var fontSize: CGFloat {
