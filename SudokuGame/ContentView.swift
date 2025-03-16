@@ -59,7 +59,7 @@ struct ContentView: View {
     @State private var isLoading = false
     
     // Ekran boyutuna göre buton boyutunu ayarla
-    private var numberButtonSize: CGFloat {
+    private let numberButtonSize: CGFloat = {
         let screenWidth = UIScreen.main.bounds.width
         if screenWidth >= 428 { // iPhone Pro Max modeller
             return min(60, (screenWidth - 40) / 9)
@@ -68,10 +68,10 @@ struct ContentView: View {
         } else { // iPhone mini ve standart modeller
             return min(50, (screenWidth - 20) / 9)
         }
-    }
+    }()
     
     // Ekran boyutuna göre padding değerlerini ayarla
-    private var horizontalPadding: CGFloat {
+    private let horizontalPadding: CGFloat = {
         let screenWidth = UIScreen.main.bounds.width
         if screenWidth >= 428 { // iPhone Pro Max modeller
             return 20
@@ -80,9 +80,9 @@ struct ContentView: View {
         } else { // iPhone mini ve standart modeller
             return 10
         }
-    }
+    }()
     
-    private var buttonFontSize: CGFloat {
+    private let buttonFontSize: CGFloat = {
         let screenWidth = UIScreen.main.bounds.width
         if screenWidth >= 428 { // iPhone Pro Max modeller
             return 17
@@ -91,7 +91,7 @@ struct ContentView: View {
         } else { // iPhone mini ve standart modeller
             return 13
         }
-    }
+    }()
     
     var themeColor: Color {
         selectedTheme.mainColor
@@ -398,8 +398,8 @@ struct ContentView: View {
         .background(gridBackground)
         .overlay(gridOverlay)
         .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 5 : 2)
-        .scaleEffect(sudokuModel.shakeGrid ? 0.95 : 1.0)
-        .animation(.easeInOut(duration: 0.2), value: sudokuModel.shakeGrid)
+        .scaleEffect(sudokuModel.shakeGrid ? 0.98 : 1.0)
+        .animation(.easeInOut(duration: 0.1), value: sudokuModel.shakeGrid)
         .frame(
             maxWidth: min(UIScreen.main.bounds.width - 8, UIScreen.main.bounds.height * 0.8),
             maxHeight: min(UIScreen.main.bounds.width - 8, UIScreen.main.bounds.height * 0.8)
@@ -525,32 +525,36 @@ struct ContentView: View {
         if let selected = sudokuModel.selectedCell {
             if noteMode {
                 // Not modu aktifse, notu ekle veya çıkar
-                withAnimation(.easeInOut(duration: 0.15)) {
+                withAnimation(.easeInOut(duration: 0.1)) {
                     toggleNote(number: number, at: selected)
                     
-                    // Haptic feedback
+                    // Haptic feedback - sadece iOS cihazlarda
+                    #if os(iOS)
                     let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
+                    generator.impactOccurred(intensity: 0.5)
+                    #endif
                 }
             } else if sudokuModel.grid[selected.row][selected.col] == nil {
                 // Normal mod, sayıyı yerleştir
-                withAnimation(.easeInOut(duration: 0.15)) {
+                withAnimation(.easeInOut(duration: 0.1)) {
                     let success = sudokuModel.placeNumber(number)
                     
-                    // Haptic feedback
+                    // Haptic feedback - sadece iOS cihazlarda
+                    #if os(iOS)
                     let generator = UIImpactFeedbackGenerator(style: success ? .medium : .heavy)
-                    generator.impactOccurred()
+                    generator.impactOccurred(intensity: success ? 0.7 : 1.0)
+                    #endif
                 }
             }
         }
-        withAnimation(.easeInOut(duration: 0.15)) {
+        withAnimation(.easeInOut(duration: 0.1)) {
             selectedNumber = number
         }
     }
     
     private func deleteButtonAction() {
         if let selected = sudokuModel.selectedCell {
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(.easeInOut(duration: 0.1)) {
                 if noteMode {
                     // Not modunda tüm notları temizle
                     notes[selected.row][selected.col] = []
@@ -559,9 +563,11 @@ struct ContentView: View {
                     sudokuModel.clearCell(at: selected.row, col: selected.col)
                 }
                 
-                // Haptic feedback
+                // Haptic feedback - sadece iOS cihazlarda
+                #if os(iOS)
                 let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
+                generator.impactOccurred(intensity: 0.5)
+                #endif
             }
         }
     }
@@ -683,13 +689,25 @@ struct SudokuBlock: View {
     let themeColor: Color
     let isDarkMode: Bool
     
+    // Blok içindeki hücrelerin satır ve sütun indekslerini önceden hesapla
+    private var cellIndices: [(row: Int, col: Int)] {
+        var indices = [(Int, Int)]()
+        for row in 0..<3 {
+            for col in 0..<3 {
+                indices.append((blockRow * 3 + row, blockCol * 3 + col))
+            }
+        }
+        return indices
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             ForEach(0..<3) { row in
                 HStack(spacing: 0) {
                     ForEach(0..<3) { col in
-                        let actualRow = blockRow * 3 + row
-                        let actualCol = blockCol * 3 + col
+                        let index = row * 3 + col
+                        let actualRow = cellIndices[index].row
+                        let actualCol = cellIndices[index].col
                         
                         SudokuCellView(
                             row: actualRow,
@@ -699,6 +717,7 @@ struct SudokuBlock: View {
                             themeColor: themeColor,
                             isDarkMode: isDarkMode
                         )
+                        .id("\(actualRow)-\(actualCol)") // Sabit ID ile gereksiz yeniden render önlenir
                     }
                 }
             }
@@ -731,11 +750,8 @@ struct SudokuCellView: View {
     let themeColor: Color
     let isDarkMode: Bool
     
-    // Ekran boyutuna göre hücre boyutunu ayarla
-    @Environment(\.horizontalSizeClass) var horizontalSizeClass
-    
-    private var cellSize: CGFloat {
-        // Ekran boyutuna göre hücre boyutunu ayarla
+    // Ekran boyutuna göre hücre boyutunu ayarla - hesaplamayı optimize et
+    private let cellSize: CGFloat = {
         let screenWidth = UIScreen.main.bounds.width
         let screenHeight = UIScreen.main.bounds.height
         let minDimension = min(screenWidth, screenHeight)
@@ -747,7 +763,7 @@ struct SudokuCellView: View {
         } else { // iPhone mini ve standart modeller
             return minDimension / 10.5
         }
-    }
+    }()
     
     private var fontSize: CGFloat {
         cellSize * 0.6
@@ -780,7 +796,8 @@ struct SudokuCellView: View {
     }
     
     private var isHighlightedNumber: Bool {
-        guard let selectedNumber = sudokuModel.grid[sudokuModel.selectedCell?.row ?? 0][sudokuModel.selectedCell?.col ?? 0] else { return false }
+        guard let selectedCell = sudokuModel.selectedCell,
+              let selectedNumber = sudokuModel.grid[selectedCell.row][selectedCell.col] else { return false }
         return value == selectedNumber
     }
     
@@ -815,12 +832,14 @@ struct SudokuCellView: View {
     
     var body: some View {
         Button(action: {
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(.easeInOut(duration: 0.1)) {
                 sudokuModel.selectedCell = (row: row, col: col)
                 
-                // Haptic feedback
+                // Haptic feedback - sadece iOS cihazlarda
+                #if os(iOS)
                 let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
+                generator.impactOccurred(intensity: 0.3)
+                #endif
             }
         }) {
             ZStack {
@@ -836,9 +855,9 @@ struct SudokuCellView: View {
             RoundedRectangle(cornerRadius: 2)
                 .stroke(isSelected ? themeColor : Color.clear, lineWidth: isSelected ? 2 : 0)
         )
-        .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isSelected)
-        .animation(.easeInOut(duration: 0.15), value: isHighlightedNumber)
+        .scaleEffect(isSelected ? 1.01 : 1.0)
+        .animation(.easeInOut(duration: 0.1), value: isSelected)
+        .animation(.easeInOut(duration: 0.1), value: isHighlightedNumber)
     }
     
     @ViewBuilder
@@ -849,7 +868,7 @@ struct SudokuCellView: View {
                 .font(.system(size: fontSize, weight: isEditable ? .regular : .bold))
                 .foregroundColor(textColor)
                 .opacity(isHighlightedNumber ? 1.0 : 0.9)
-                .shadow(color: isHighlightedNumber ? themeColor.opacity(0.5) : Color.clear, radius: 1)
+                .shadow(color: isHighlightedNumber ? themeColor.opacity(0.3) : Color.clear, radius: 0.5)
         } else if !notes.isEmpty {
             // Notlar
             notesGrid
@@ -881,7 +900,7 @@ struct SudokuCellView: View {
                 )
                 .frame(width: notesItemSize, height: notesItemSize)
         } else {
-            Text("")
+            Color.clear
                 .frame(width: notesItemSize, height: notesItemSize)
         }
     }
