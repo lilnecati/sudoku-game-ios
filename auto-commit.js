@@ -1,7 +1,7 @@
 const { exec } = require("child_process");
 const fs = require("fs");
 
-const interval = 100000;
+const interval = 180000;
 
 let lastHash = "";
 
@@ -39,4 +39,4 @@ function checkForChangesAndCommit() {
 
 setInterval(checkForChangesAndCommit, interval);
 
-console.log("Otomatik commit ve push işlemi başlatıldı. Her 1 dakikada bir kontrol edilecek.");
+console.log("Otomatik commit ve push işlemi başlatıldı. Her 3 dakikada bir kontrol edilecek.");
