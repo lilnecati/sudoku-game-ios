@@ -192,7 +192,7 @@ struct ContentView: View {
     private var topBarView: some View {
         HStack {
             Button(action: {
-                // Ana menüye dön - animasyonu kaldırarak hızlandırıyorum
+                // Ana menüye dön
                 stopTimer()
                 showingWelcomeScreen = true
             }) {
@@ -447,8 +447,10 @@ struct ContentView: View {
         let isSelected = selectedNumber == number
         
         return Button(action: {
-            // Animasyonu kaldırarak hızlandırıyorum
-            sudokuModel.selectedCell = (row: row, col: col)
+            if let selectedCell = sudokuModel.selectedCell {
+                // Seçili hücreye sayı gir
+                sudokuModel.enterNumber(number, at: selectedCell.row, col: selectedCell.col)
+            }
             
             // Haptic feedback - sadece iOS cihazlarda
             #if os(iOS)
@@ -458,10 +460,12 @@ struct ContentView: View {
         }) {
             ZStack {
                 Rectangle()
-                    .fill(backgroundColor)
-                    .frame(width: cellSize, height: cellSize)
+                    .fill(isSelected ? themeColor.opacity(0.3) : (isDarkMode ? Color.black.opacity(0.1) : Color.white.opacity(0.7)))
+                    .frame(width: buttonSize, height: buttonSize)
                 
-                cellContent
+                Text("\(number)")
+                    .font(.system(size: fontSize * 0.8, weight: .medium))
+                    .foregroundColor(isDarkMode ? .white : .black)
             }
         }
         .buttonStyle(PlainButtonStyle())
@@ -473,7 +477,6 @@ struct ContentView: View {
                 )
         )
         .scaleEffect(isSelected ? 1.01 : 1.0)
-        // Animasyonları kaldırarak performansı artırıyorum
     }
     
     private func showHint() {
@@ -518,11 +521,11 @@ struct ContentView: View {
         // Önceki zamanlayıcıyı iptal et
         timer?.invalidate()
         
-        // Yeni zamanlayıcı oluştur - 0.5 saniye aralıklarla
-        timer = Timer(timeInterval: 0.5, repeats: true) { [self] _ in
-            sudokuModel.gameTime += 0.5
+        // Yeni zamanlayıcı oluştur - 1 saniye aralıklarla
+        timer = Timer(timeInterval: 1.0, repeats: true) { [self] _ in
+            sudokuModel.gameTime += 1
         }
-        // Ana thread'de çalıştır
+        // Ana thread'de çalıştır ve daha doğru zamanlama için common modunu kullan
         RunLoop.main.add(timer!, forMode: .common)
     }
     
@@ -727,7 +730,6 @@ struct SudokuCellView: View {
     
     var body: some View {
         Button(action: {
-            // Animasyonu kaldırarak hızlandırıyorum
             sudokuModel.selectedCell = (row: row, col: col)
             
             // Haptic feedback - sadece iOS cihazlarda
@@ -753,7 +755,6 @@ struct SudokuCellView: View {
                 )
         )
         .scaleEffect(isSelected ? 1.01 : 1.0)
-        // Animasyonları kaldırarak performansı artırıyorum
     }
     
     @ViewBuilder
