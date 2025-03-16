@@ -391,13 +391,13 @@ struct EventsView: View {
     
     // Örnek etkinlikler
     private let events = [
-        Event(title: "Haftalık Turnuva", date: "Her Cumartesi 15:00", description: "Haftalık sudoku turnuvasına katılın ve ödüller kazanın!"),
-        Event(title: "Yeni Başlayanlar Eğitimi", date: "Her Pazartesi 18:00", description: "Sudoku'ya yeni başlayanlar için temel stratejiler ve ipuçları."),
-        Event(title: "Uzman Seviye Yarışma", date: "15 Haziran 2025", description: "Sadece uzman seviyedeki oyuncular için özel yarışma."),
-        Event(title: "Sudoku Maratonu", date: "1-2 Temmuz 2025", description: "24 saat süren sudoku maratonunda dayanıklılığınızı test edin.")
+        EventItem(title: "Haftalık Turnuva", date: "Her Cumartesi 15:00", description: "Haftalık sudoku turnuvasına katılın ve ödüller kazanın!"),
+        EventItem(title: "Yeni Başlayanlar Eğitimi", date: "Her Pazartesi 18:00", description: "Sudoku'ya yeni başlayanlar için temel stratejiler ve ipuçları."),
+        EventItem(title: "Uzman Seviye Yarışma", date: "15 Haziran 2025", description: "Sadece uzman seviyedeki oyuncular için özel yarışma."),
+        EventItem(title: "Sudoku Maratonu", date: "1-2 Temmuz 2025", description: "24 saat süren sudoku maratonunda dayanıklılığınızı test edin.")
     ]
     
-    @State private var selectedEvent: Event?
+    @State private var selectedEvent: EventItem?
     @State private var showingEventDetail = false
     
     var body: some View {
@@ -482,7 +482,7 @@ struct EventsView: View {
 }
 
 // Etkinlik modeli
-struct Event: Identifiable {
+struct EventItem: Identifiable {
     let id = UUID()
     let title: String
     let date: String
@@ -625,7 +625,7 @@ struct EventDetailView: View {
     @Environment(\.presentationMode) var presentationMode
     @Environment(\.colorScheme) var colorScheme
     
-    let event: Event
+    let event: EventItem
     @State private var isRegistered = false
     
     private var primaryColor: Color {
