@@ -168,7 +168,7 @@ class SudokuModel: ObservableObject {
         
         for row in 0..<9 {
             for col in 0..<9 {
-                if grid[row][col] == nil && isCellEditable(at: row, col) {
+                if grid[row][col] == nil && isCellEditable(at: row, col: col) {
                     emptyCells.append((row: row, col: col))
                 }
             }

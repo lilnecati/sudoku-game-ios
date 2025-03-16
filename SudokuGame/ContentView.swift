@@ -470,37 +470,26 @@ struct ContentView: View {
                         #endif
                     } else {
                         // Normal modda
-                        if sudokuModel.isValidMove(number: number, at: cell.row, col: cell.col) {
-                            sudokuModel.grid[cell.row][cell.col] = number
+                        withAnimation(.easeInOut(duration: 0.1)) {
+                            let success = sudokuModel.isValidMove(number: number, at: cell.row, col: cell.col)
                             
-                            // Orta haptic feedback
-                            #if os(iOS)
-                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                            generator.impactOccurred(intensity: 0.6)
-                            #endif
-                            
-                            // Notları temizle
-                            notes[cell.row][cell.col] = []
-                            
-                            // Oyun tamamlandı mı kontrol et
-                            sudokuModel.checkGameCompletion()
-                            
-                            if sudokuModel.isGameComplete {
-                                // Güçlü haptic feedback
-                                #if os(iOS)
-                                let generator = UINotificationFeedbackGenerator()
-                                generator.notificationOccurred(.success)
-                                #endif
+                            if success {
+                                sudokuModel.grid[cell.row][cell.col] = number
+                                
+                                // Notları temizle
+                                notes[cell.row][cell.col] = []
+                                
+                                // Oyun tamamlandı mı kontrol et
+                                sudokuModel.checkGameCompletion()
+                            } else {
+                                sudokuModel.shake()
+                                sudokuModel.mistakes += 1
                             }
-                        } else {
-                            // Geçersiz hamle
-                            sudokuModel.shake()
-                            sudokuModel.mistakes += 1
                             
-                            // Hata haptic feedback
+                            // Haptic feedback - sadece iOS cihazlarda
                             #if os(iOS)
-                            let generator = UINotificationFeedbackGenerator()
-                            generator.notificationOccurred(.error)
+                            let generator = UIImpactFeedbackGenerator(style: success ? .medium : .heavy)
+                            generator.impactOccurred(intensity: success ? 0.7 : 1.0)
                             #endif
                         }
                     }
@@ -658,13 +647,14 @@ struct ContentView: View {
     
     private func startTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            sudokuModel.gameTime += 1
+            self.sudokuModel.gameTime += 1
         }
     }
     
     private func stopTimer() {
         timer?.invalidate()
         timer = nil
+        sudokuModel.stopTimer()
     }
     
     private func resetTimer() {
