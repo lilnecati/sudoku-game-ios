@@ -62,11 +62,11 @@ struct ContentView: View {
     private var numberButtonSize: CGFloat {
         let screenWidth = UIScreen.main.bounds.width
         if screenWidth >= 428 { // iPhone Pro Max modeller
-            return 60
+            return min(60, (screenWidth - 40) / 9)
         } else if screenWidth >= 390 { // iPhone Pro modeller
-            return 55
+            return min(55, (screenWidth - 30) / 9)
         } else { // iPhone mini ve standart modeller
-            return 50
+            return min(50, (screenWidth - 20) / 9)
         }
     }
     
@@ -346,15 +346,15 @@ struct ContentView: View {
                         .scaleEffect(sudokuModel.shakeGrid ? 0.95 : 1.0)
                         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: sudokuModel.shakeGrid)
                         .frame(
-                            maxWidth: min(UIScreen.main.bounds.width - 10, UIScreen.main.bounds.height * 0.75),
-                            maxHeight: min(UIScreen.main.bounds.width - 10, UIScreen.main.bounds.height * 0.75)
+                            maxWidth: min(UIScreen.main.bounds.width - 8, UIScreen.main.bounds.height * 0.8),
+                            maxHeight: min(UIScreen.main.bounds.width - 8, UIScreen.main.bounds.height * 0.8)
                         )
                         .aspectRatio(1, contentMode: .fit)
                         
                         Spacer()
                         
                         // Rakam seçici
-                        HStack {
+                        HStack(spacing: 2) {
                             ForEach(1...9, id: \.self) { number in
                                 Button(action: {
                                     if let selected = sudokuModel.selectedCell {
@@ -620,7 +620,7 @@ struct SudokuBlock: View {
         .padding(3)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(isDarkMode ? Color.gray.opacity(0.8) : Color.gray.opacity(0.7), lineWidth: 4)
+                .stroke(isDarkMode ? Color.gray.opacity(0.8) : Color.gray.opacity(0.7), lineWidth: 5)
         )
     }
 }
@@ -643,11 +643,11 @@ struct SudokuCellView: View {
         let minDimension = min(screenWidth, screenHeight)
         
         if screenWidth >= 428 { // iPhone Pro Max modeller
-            return minDimension / 10
+            return minDimension / 9.5
         } else if screenWidth >= 390 { // iPhone Pro modeller
-            return minDimension / 10.5
+            return minDimension / 10
         } else { // iPhone mini ve standart modeller
-            return minDimension / 11
+            return minDimension / 10.5
         }
     }
     
@@ -749,7 +749,7 @@ struct SudokuCellView: View {
         .buttonStyle(PlainButtonStyle())
         .overlay(
             RoundedRectangle(cornerRadius: 2)
-                .stroke(isSelected ? themeColor : Color.gray.opacity(0.3), lineWidth: isSelected ? 2 : 0.5)
+                .stroke(isSelected ? themeColor : Color.gray.opacity(0.3), lineWidth: isSelected ? 3 : 1)
         )
         .scaleEffect(isSelected ? 1.05 : 1.0)
     }
