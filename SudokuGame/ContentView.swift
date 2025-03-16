@@ -81,13 +81,14 @@ struct ContentView: View {
     @Environment(\.presentationMode) var presentationMode
     
     enum SheetType: Identifiable {
-        case difficulty, stats, howToPlay
+        case difficulty, stats, howToPlay, badges
         
         var id: Int {
             switch self {
             case .difficulty: return 0
             case .stats: return 1
             case .howToPlay: return 2
+            case .badges: return 3
             }
         }
     }
@@ -212,6 +213,25 @@ struct ContentView: View {
                                             .shadow(color: colorScheme == .dark ? Color.purple.opacity(0.3) : Color.blue.opacity(0.2), radius: 2, x: 0, y: 1)
                                     )
                             }
+                            
+                            Button(action: {
+                                presentedSheet = .badges
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "medal.fill")
+                                        .font(.system(size: 14))
+                                    Text("\(badges.filter { $0.isEarned }.count)")
+                                        .font(.system(size: 14))
+                                }
+                                .padding(.vertical, 6)
+                                .padding(.horizontal, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(colorScheme == .dark ? Color.orange.opacity(0.3) : Color.orange.opacity(0.2))
+                                        .shadow(color: colorScheme == .dark ? Color.orange.opacity(0.3) : Color.orange.opacity(0.2), radius: 3, x: 0, y: 2)
+                                )
+                                .foregroundColor(colorScheme == .dark ? .orange : .orange)
+                            }
                         }
                     }
                     .padding(.horizontal)
@@ -288,6 +308,15 @@ struct ContentView: View {
                             )
                     case .howToPlay:
                         HowToPlayView()
+                            .gesture(DragGesture(minimumDistance: 20, coordinateSpace: .global)
+                                .onEnded { value in
+                                    if value.translation.width > 100 {
+                                        presentedSheet = nil
+                                    }
+                                }
+                            )
+                    case .badges:
+                        BadgesView(badges: $badges)
                             .gesture(DragGesture(minimumDistance: 20, coordinateSpace: .global)
                                 .onEnded { value in
                                     if value.translation.width > 100 {
@@ -1030,6 +1059,273 @@ struct BadgeEarnedView: View {
                 RoundedRectangle(cornerRadius: 20)
                     .fill(Color.gray.opacity(0.2))
                     .shadow(color: badge.color.opacity(0.5), radius: 20, x: 0, y: 0)
+            )
+            .scaleEffect(scale)
+            .opacity(opacity)
+            .onAppear {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    scale = 1.0
+                    opacity = 1.0
+                }
+            }
+        }
+    }
+    
+    private func dismiss() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            scale = 0.5
+            opacity = 0
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            onDismiss()
+        }
+    }
+}
+
+// Rozetler sayfası
+struct BadgesView: View {
+    @Binding var badges: [Badge]
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.presentationMode) var presentationMode
+    @State private var dragOffset: CGFloat = 0
+    @State private var selectedBadge: Badge? = nil
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                (colorScheme == .dark ? Color.black : Color.white).ignoresSafeArea()
+                
+                VStack(spacing: 20) {
+                    Text("Rozetlerim")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .padding(.top, 20)
+                    
+                    if badges.filter({ $0.isEarned }).isEmpty {
+                        VStack(spacing: 15) {
+                            Image(systemName: "medal.fill")
+                                .font(.system(size: 70))
+                                .foregroundColor(.gray.opacity(0.5))
+                                .padding()
+                            
+                            Text("Henüz rozet kazanmadınız")
+                                .font(.title3)
+                                .foregroundColor(.gray)
+                            
+                            Text("Sudoku çözerek rozetler kazanabilirsiniz")
+                                .font(.subheadline)
+                                .foregroundColor(.gray.opacity(0.8))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
+                        .frame(maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150))], spacing: 20) {
+                                ForEach(badges.filter { $0.isEarned }) { badge in
+                                    BadgeItemView(badge: badge)
+                                        .onTapGesture {
+                                            selectedBadge = badge
+                                        }
+                                }
+                            }
+                            .padding()
+                            
+                            Divider()
+                                .padding(.vertical)
+                            
+                            Text("Kazanılabilir Rozetler")
+                                .font(.headline)
+                                .foregroundColor(.gray)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal)
+                            
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150))], spacing: 20) {
+                                ForEach(badges.filter { !$0.isEarned }) { badge in
+                                    BadgeItemView(badge: badge, locked: true)
+                                        .onTapGesture {
+                                            selectedBadge = badge
+                                        }
+                                }
+                            }
+                            .padding()
+                        }
+                    }
+                    
+                    // Kaydırma ipucu
+                    HStack {
+                        Image(systemName: "arrow.right")
+                        Text("Kapatmak için sağa kaydırın")
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .padding(.bottom, 20)
+                }
+                .padding(.horizontal)
+                .offset(x: dragOffset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            if value.translation.width > 0 {
+                                dragOffset = value.translation.width
+                            }
+                        }
+                        .onEnded { value in
+                            if value.translation.width > 100 {
+                                presentationMode.wrappedValue.dismiss()
+                            } else {
+                                withAnimation {
+                                    dragOffset = 0
+                                }
+                            }
+                        }
+                )
+                
+                if let badge = selectedBadge {
+                    BadgeDetailView(badge: badge, isLocked: !badge.isEarned) {
+                        selectedBadge = nil
+                    }
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Kapat") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .foregroundColor(colorScheme == .dark ? .purple : .blue)
+                }
+            }
+        }
+    }
+}
+
+struct BadgeItemView: View {
+    let badge: Badge
+    var locked: Bool = false
+    @Environment(\.colorScheme) private var colorScheme
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: badge.icon)
+                .font(.system(size: 40))
+                .foregroundColor(locked ? .gray : badge.color)
+                .frame(width: 80, height: 80)
+                .background(
+                    Circle()
+                        .fill(locked ? Color.gray.opacity(0.1) : badge.color.opacity(0.2))
+                )
+                .overlay(
+                    Circle()
+                        .stroke(locked ? Color.gray.opacity(0.3) : badge.color, lineWidth: 2)
+                )
+                .overlay(
+                    locked ?
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.gray)
+                            .offset(y: 25)
+                        : nil
+                )
+            
+            Text(badge.name)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(locked ? .gray : (colorScheme == .dark ? .white : .primary))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+        }
+        .frame(width: 120, height: 150)
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white)
+                .shadow(color: locked ? Color.gray.opacity(0.2) : badge.color.opacity(0.3), radius: 5, x: 0, y: 3)
+        )
+        .opacity(locked ? 0.7 : 1.0)
+    }
+}
+
+struct BadgeDetailView: View {
+    let badge: Badge
+    let isLocked: Bool
+    let onDismiss: () -> Void
+    @State private var scale: CGFloat = 0.5
+    @State private var opacity: Double = 0
+    @Environment(\.colorScheme) private var colorScheme
+    
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.7)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    dismiss()
+                }
+            
+            VStack(spacing: 25) {
+                Image(systemName: badge.icon)
+                    .font(.system(size: 80))
+                    .foregroundColor(isLocked ? .gray : badge.color)
+                    .padding()
+                    .background(
+                        Circle()
+                            .fill(isLocked ? Color.gray.opacity(0.1) : badge.color.opacity(0.2))
+                            .frame(width: 180, height: 180)
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(isLocked ? Color.gray.opacity(0.3) : badge.color, lineWidth: 3)
+                            .frame(width: 180, height: 180)
+                    )
+                    .overlay(
+                        isLocked ?
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 30))
+                                .foregroundColor(.gray)
+                                .offset(y: 60)
+                            : nil
+                    )
+                
+                Text(badge.name)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                Text(badge.description)
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.white.opacity(0.8))
+                
+                if isLocked {
+                    Text("Bu rozeti kazanmak için görevini tamamla!")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .padding(.top, 5)
+                } else {
+                    Text("Tebrikler! Bu rozeti kazandınız.")
+                        .font(.subheadline)
+                        .foregroundColor(.green)
+                        .padding(.top, 5)
+                }
+                
+                Button(action: {
+                    dismiss()
+                }) {
+                    Text("Tamam")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 30)
+                        .background(isLocked ? Color.gray : badge.color)
+                        .cornerRadius(25)
+                }
+                .padding(.top, 10)
+            }
+            .padding(30)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(colorScheme == .dark ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
+                    .shadow(color: isLocked ? Color.gray.opacity(0.5) : badge.color.opacity(0.5), radius: 20, x: 0, y: 0)
             )
             .scaleEffect(scale)
             .opacity(opacity)

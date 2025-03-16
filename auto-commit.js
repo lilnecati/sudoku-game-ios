@@ -1,7 +1,7 @@
 const { exec } = require("child_process");
 const fs = require("fs");
 
-const interval = 60000;
+const interval = 100000;
 
 let lastHash = "";
 
