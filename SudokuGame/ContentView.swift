@@ -57,41 +57,16 @@ struct ContentView: View {
     @State private var notes: [[[Int]]] = Array(repeating: Array(repeating: [], count: 9), count: 9)
     @State private var showingWelcomeScreen = false
     @State private var isLoading = false
+    @Environment(\.colorScheme) var colorScheme
     
-    // Ekran boyutuna göre buton boyutunu ayarla
-    private let numberButtonSize: CGFloat = {
-        let screenWidth = UIScreen.main.bounds.width
-        if screenWidth >= 428 { // iPhone Pro Max modeller
-            return min(60, (screenWidth - 40) / 9)
-        } else if screenWidth >= 390 { // iPhone Pro modeller
-            return min(55, (screenWidth - 30) / 9)
-        } else { // iPhone mini ve standart modeller
-            return min(50, (screenWidth - 20) / 9)
-        }
-    }()
+    // Sabit değerler - performans için önceden hesaplanır
+    private let buttonSize: CGFloat = UIScreen.main.bounds.width < 375 ? 40 : 45
+    private let numberButtonPadding: CGFloat = UIScreen.main.bounds.width < 375 ? 4 : 6
+    private let numberButtonFontSize: CGFloat = UIScreen.main.bounds.width < 375 ? 20 : 22
     
-    // Ekran boyutuna göre padding değerlerini ayarla
-    private let horizontalPadding: CGFloat = {
-        let screenWidth = UIScreen.main.bounds.width
-        if screenWidth >= 428 { // iPhone Pro Max modeller
-            return 20
-        } else if screenWidth >= 390 { // iPhone Pro modeller
-            return 15
-        } else { // iPhone mini ve standart modeller
-            return 10
-        }
-    }()
-    
-    private let buttonFontSize: CGFloat = {
-        let screenWidth = UIScreen.main.bounds.width
-        if screenWidth >= 428 { // iPhone Pro Max modeller
-            return 17
-        } else if screenWidth >= 390 { // iPhone Pro modeller
-            return 15
-        } else { // iPhone mini ve standart modeller
-            return 13
-        }
-    }()
+    private var isDarkMode: Bool {
+        colorScheme == .dark
+    }
     
     var themeColor: Color {
         selectedTheme.mainColor
@@ -242,7 +217,7 @@ struct ContentView: View {
                         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
                 )
             }
-            .padding(.leading, horizontalPadding)
+            .padding(.leading, numberButtonPadding)
             
             Spacer()
             
@@ -279,7 +254,7 @@ struct ContentView: View {
                         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
                 )
             }
-            .padding(.trailing, horizontalPadding)
+            .padding(.trailing, numberButtonPadding)
         }
         .padding(.top, 10)
     }
@@ -297,7 +272,7 @@ struct ContentView: View {
                         .foregroundColor(themeColor)
                     Text(formatTime(sudokuModel.gameTime))
                         .foregroundColor(isDarkMode ? .white : .black)
-                        .font(.system(size: buttonFontSize, weight: .medium))
+                        .font(.system(size: numberButtonFontSize, weight: .medium))
                 }
                 .padding(.vertical, 10)
                 .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
@@ -319,7 +294,7 @@ struct ContentView: View {
                     .foregroundColor(.red)
                 Text("\(sudokuModel.mistakes)")
                     .foregroundColor(isDarkMode ? .white : .black)
-                    .font(.system(size: buttonFontSize, weight: .medium))
+                    .font(.system(size: numberButtonFontSize, weight: .medium))
             }
             .padding(.vertical, 10)
             .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
@@ -334,7 +309,7 @@ struct ContentView: View {
                 }
             )
         }
-        .padding(.horizontal, horizontalPadding)
+        .padding(.horizontal, numberButtonPadding)
         .padding(.top, 5)
     }
     
@@ -346,16 +321,16 @@ struct ContentView: View {
         }) {
             HStack {
                 Image(systemName: noteMode ? "pencil.circle.fill" : "pencil.circle")
-                    .font(.system(size: buttonFontSize + 2))
+                    .font(.system(size: numberButtonFontSize + 2))
                 Text("Not Modu")
-                    .font(.system(size: buttonFontSize, weight: noteMode ? .semibold : .medium))
+                    .font(.system(size: numberButtonFontSize, weight: noteMode ? .semibold : .medium))
             }
             .foregroundColor(noteMode ? .white : (isDarkMode ? .white : .black))
             .padding(.vertical, 10)
             .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 20 : 15)
             .background(noteModeBackground)
         }
-        .padding(.horizontal, horizontalPadding)
+        .padding(.horizontal, numberButtonPadding)
         .padding(.top, 5)
     }
     
@@ -460,7 +435,7 @@ struct ContentView: View {
                 }) {
                     Text("\(number)")
                         .font(.system(size: UIScreen.main.bounds.width >= 390 ? 28 : 24, weight: .bold))
-                        .frame(width: numberButtonSize, height: numberButtonSize)
+                        .frame(width: buttonSize, height: buttonSize)
                         .background(numberButtonBackground(for: number))
                         .foregroundColor(selectedNumber == number ? .white : (isDarkMode ? .white : .black))
                         .scaleEffect(selectedNumber == number ? 1.05 : 1.0)
@@ -468,7 +443,7 @@ struct ContentView: View {
                 .buttonStyle(PlainButtonStyle())
             }
         }
-        .padding(.horizontal, horizontalPadding)
+        .padding(.horizontal, numberButtonPadding)
         .padding(.vertical, 10)
     }
     
@@ -1146,5 +1121,328 @@ struct LoadingView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
+    }
+}
+
+class SudokuModel: ObservableObject {
+    enum Difficulty: String, CaseIterable {
+        case kolay = "Kolay"
+        case orta = "Orta"
+        case zor = "Zor"
+    }
+    
+    @Published var grid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+    @Published var originalGrid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+    @Published var selectedCell: (row: Int, col: Int)? = nil
+    @Published var isShaking = false
+    @Published var difficulty: Difficulty = .orta
+    @Published var gameTime: TimeInterval = 0
+    @Published var mistakes: Int = 0
+    @Published var isGameComplete: Bool = false
+    
+    private var timer: Timer?
+    private var solution: [[Int]] = Array(repeating: Array(repeating: 0, count: 9), count: 9)
+    
+    // Performans için önbelleğe alınmış değerler
+    private var validMovesCache: [String: Bool] = [:]
+    private var cellEditabilityCache: [String: Bool] = [:]
+    
+    init() {
+        newGame()
+        startTimer()
+    }
+    
+    deinit {
+        timer?.invalidate()
+    }
+    
+    func newGame() {
+        // Önbelleği temizle
+        validMovesCache.removeAll()
+        cellEditabilityCache.removeAll()
+        
+        // Yeni oyun oluştur
+        generateNewGame()
+        selectedCell = nil
+        isShaking = false
+        gameTime = 0
+        mistakes = 0
+        isGameComplete = false
+        
+        // Zamanlayıcıyı yeniden başlat
+        timer?.invalidate()
+        startTimer()
+    }
+    
+    private func startTimer() {
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            self.gameTime += 1
+        }
+    }
+    
+    func shake() {
+        isShaking = true
+        
+        // Titreşimi 0.3 saniye sonra durdur
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.isShaking = false
+        }
+    }
+    
+    func isCellEditable(at row: Int, col: Int) -> Bool {
+        let key = "\(row)-\(col)"
+        
+        // Önbellekte varsa, önbellekten döndür
+        if let cached = cellEditabilityCache[key] {
+            return cached
+        }
+        
+        // Yoksa hesapla ve önbelleğe al
+        let result = originalGrid[row][col] == nil
+        cellEditabilityCache[key] = result
+        return result
+    }
+    
+    func isValidMove(number: Int, at row: Int, col: Int) -> Bool {
+        let key = "\(row)-\(col)-\(number)"
+        
+        // Önbellekte varsa, önbellekten döndür
+        if let cached = validMovesCache[key] {
+            return cached
+        }
+        
+        // Satır kontrolü
+        for c in 0..<9 {
+            if grid[row][c] == number && c != col {
+                validMovesCache[key] = false
+                return false
+            }
+        }
+        
+        // Sütun kontrolü
+        for r in 0..<9 {
+            if grid[r][col] == number && r != row {
+                validMovesCache[key] = false
+                return false
+            }
+        }
+        
+        // Blok kontrolü
+        let blockRow = (row / 3) * 3
+        let blockCol = (col / 3) * 3
+        
+        for r in blockRow..<blockRow+3 {
+            for c in blockCol..<blockCol+3 {
+                if grid[r][c] == number && (r != row || c != col) {
+                    validMovesCache[key] = false
+                    return false
+                }
+            }
+        }
+        
+        // Geçerli hamle
+        validMovesCache[key] = true
+        return true
+    }
+    
+    func getHint() -> (row: Int, col: Int, value: Int)? {
+        // Boş hücreleri bul
+        var emptyCells = [(row: Int, col: Int)]()
+        
+        for row in 0..<9 {
+            for col in 0..<9 {
+                if grid[row][col] == nil && isCellEditable(at: row, col: col) {
+                    emptyCells.append((row: row, col: col))
+                }
+            }
+        }
+        
+        // Boş hücre yoksa ipucu verilemez
+        if emptyCells.isEmpty {
+            return nil
+        }
+        
+        // Rastgele bir boş hücre seç
+        if let randomCell = emptyCells.randomElement() {
+            let row = randomCell.row
+            let col = randomCell.col
+            let value = solution[row][col]
+            
+            return (row: row, col: col, value: value)
+        }
+        
+        return nil
+    }
+    
+    private func generateNewGame() {
+        // Çözümü oluştur
+        generateSolution()
+        
+        // Zorluk seviyesine göre ipuçlarını belirle
+        var hints: Int
+        
+        switch difficulty {
+        case .kolay:
+            hints = 45 // Daha fazla ipucu = daha kolay
+        case .orta:
+            hints = 35
+        case .zor:
+            hints = 25 // Daha az ipucu = daha zor
+        }
+        
+        // Boş ızgara oluştur
+        grid = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+        
+        // Rastgele ipuçlarını yerleştir
+        var positions = [(row: Int, col: Int)]()
+        for row in 0..<9 {
+            for col in 0..<9 {
+                positions.append((row: row, col: col))
+            }
+        }
+        positions.shuffle()
+        
+        for i in 0..<hints {
+            let pos = positions[i]
+            grid[pos.row][pos.col] = solution[pos.row][pos.col]
+        }
+        
+        // Orijinal ızgarayı kaydet
+        originalGrid = grid.map { $0.map { $0 } }
+        
+        // Oyun tamamlanma durumunu kontrol et
+        checkGameCompletion()
+    }
+    
+    private func generateSolution() {
+        // Boş ızgara oluştur
+        solution = Array(repeating: Array(repeating: 0, count: 9), count: 9)
+        
+        // Çözümü oluştur
+        _ = solveSudoku()
+    }
+    
+    private func solveSudoku() -> Bool {
+        for row in 0..<9 {
+            for col in 0..<9 {
+                if solution[row][col] == 0 {
+                    // Rastgele sayı sırası oluştur
+                    var numbers = Array(1...9)
+                    numbers.shuffle()
+                    
+                    for num in numbers {
+                        if isSafe(row: row, col: col, num: num) {
+                            solution[row][col] = num
+                            
+                            if solveSudoku() {
+                                return true
+                            }
+                            
+                            solution[row][col] = 0
+                        }
+                    }
+                    
+                    return false
+                }
+            }
+        }
+        
+        return true
+    }
+    
+    private func isSafe(row: Int, col: Int, num: Int) -> Bool {
+        // Satır kontrolü
+        for c in 0..<9 {
+            if solution[row][c] == num {
+                return false
+            }
+        }
+        
+        // Sütun kontrolü
+        for r in 0..<9 {
+            if solution[r][col] == num {
+                return false
+            }
+        }
+        
+        // Blok kontrolü
+        let blockRow = (row / 3) * 3
+        let blockCol = (col / 3) * 3
+        
+        for r in blockRow..<blockRow+3 {
+            for c in blockCol..<blockCol+3 {
+                if solution[r][c] == num {
+                    return false
+                }
+            }
+        }
+        
+        return true
+    }
+    
+    func checkGameCompletion() {
+        // Tüm hücreler dolu mu kontrol et
+        for row in 0..<9 {
+            for col in 0..<9 {
+                if grid[row][col] == nil {
+                    isGameComplete = false
+                    return
+                }
+            }
+        }
+        
+        // Tüm satırlar, sütunlar ve bloklar geçerli mi kontrol et
+        for i in 0..<9 {
+            if !isValidRow(i) || !isValidColumn(i) || !isValidBlock(i / 3, i % 3) {
+                isGameComplete = false
+                return
+            }
+        }
+        
+        // Oyun tamamlandı
+        isGameComplete = true
+        timer?.invalidate()
+    }
+    
+    private func isValidRow(_ row: Int) -> Bool {
+        var seen = Set<Int>()
+        for col in 0..<9 {
+            if let num = grid[row][col] {
+                if seen.contains(num) {
+                    return false
+                }
+                seen.insert(num)
+            }
+        }
+        return seen.count == 9
+    }
+    
+    private func isValidColumn(_ col: Int) -> Bool {
+        var seen = Set<Int>()
+        for row in 0..<9 {
+            if let num = grid[row][col] {
+                if seen.contains(num) {
+                    return false
+                }
+                seen.insert(num)
+            }
+        }
+        return seen.count == 9
+    }
+    
+    private func isValidBlock(_ blockRow: Int, _ blockCol: Int) -> Bool {
+        var seen = Set<Int>()
+        for row in blockRow * 3..<blockRow * 3 + 3 {
+            for col in blockCol * 3..<blockCol * 3 + 3 {
+                if let num = grid[row][col] {
+                    if seen.contains(num) {
+                        return false
+                    }
+                    seen.insert(num)
+                }
+            }
+        }
+        return seen.count == 9
     }
 } 
