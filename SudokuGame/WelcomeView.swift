@@ -166,37 +166,36 @@ struct WelcomeView: View {
                         .padding(.horizontal)
                         
                         // Oyuna başla butonu
-                        NavigationLink {
-                            ContentView()
-                                .navigationBarBackButtonHidden()
-                        } label: {
-                            HStack {
-                                Image(systemName: "play.fill")
-                                    .font(.headline)
-                                Text("OYUNA BAŞLA")
-                                    .font(.headline)
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 60)
-                            .background(
-                                LinearGradient(gradient: Gradient(colors: [primaryColor, secondaryColor]),
-                                             startPoint: .leading, endPoint: .trailing)
-                            )
-                            .cornerRadius(15)
-                            .shadow(color: primaryColor.opacity(0.5), radius: 5, x: 0, y: 3)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 15)
-                                    .stroke(Color.white.opacity(0.3), lineWidth: 2)
-                            )
-                            .padding(.horizontal, 30)
-                            .offset(y: buttonOffset)
-                            .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2), value: buttonOffset)
-                            .onTapGesture {
+                        NavigationLink(destination: ContentView()
+                            .navigationBarBackButtonHidden(), isActive: $isGameStarted) {
+                            Button(action: {
                                 withAnimation {
                                     isGameStarted = true
                                 }
+                            }) {
+                                HStack {
+                                    Image(systemName: "play.fill")
+                                        .font(.headline)
+                                    Text("OYUNA BAŞLA")
+                                        .font(.headline)
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 60)
+                                .background(
+                                    LinearGradient(gradient: Gradient(colors: [primaryColor, secondaryColor]),
+                                                 startPoint: .leading, endPoint: .trailing)
+                                )
+                                .cornerRadius(15)
+                                .shadow(color: primaryColor.opacity(0.5), radius: 5, x: 0, y: 3)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 15)
+                                        .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                                )
                             }
+                            .padding(.horizontal, 30)
+                            .offset(y: buttonOffset)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2), value: buttonOffset)
                         }
                         
                         // Nasıl oynanır butonu
