@@ -391,7 +391,7 @@ struct ContentView: View {
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(
                     isDarkMode ?
                     LinearGradient(
@@ -405,12 +405,13 @@ struct ContentView: View {
                         endPoint: .bottomTrailing
                     )
                 )
+                .shadow(color: isDarkMode ? Color.black.opacity(0.5) : Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
         )
-        .cornerRadius(8)
+        .cornerRadius(12)
         .padding(5)
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(isDarkMode ? Color.white.opacity(0.5) : Color.black.opacity(0.5), lineWidth: 3) // Dış çerçeveyi daha belirgin yap
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isDarkMode ? Color.white.opacity(0.5) : Color.black.opacity(0.5), lineWidth: 3)
         )
         .scaleEffect(sudokuModel.isShaking ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: sudokuModel.isShaking)
@@ -693,7 +694,7 @@ struct SudokuBlock: View {
     // Blok arka plan rengini hesapla
     private var blockBackground: some View {
         let isEvenBlock = (blockRow + blockCol) % 2 == 0
-        return Rectangle()
+        return RoundedRectangle(cornerRadius: 6)
             .fill(
                 isDarkMode ?
                 (isEvenBlock ? Color.gray.opacity(0.25) : Color.gray.opacity(0.3)) :
@@ -725,11 +726,11 @@ struct SudokuBlock: View {
             }
         }
         .background(blockBackground)
-        .cornerRadius(4)
-        .padding(1) // Bloklar arası boşluğu artır
+        .cornerRadius(6)
+        .padding(1.5) // Bloklar arası boşluğu artır
         .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(isDarkMode ? Color.white.opacity(0.4) : Color.black.opacity(0.4), lineWidth: 2) // Çizgi kalınlığını ve rengini değiştir
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isDarkMode ? Color.white.opacity(0.4) : Color.black.opacity(0.4), lineWidth: 1.5)
         )
     }
 }
@@ -802,7 +803,7 @@ struct SudokuCellView: View {
         if isSelected {
             return themeColor.opacity(0.3)
         } else if isHighlightedNumber && value != nil {
-            return themeColor.opacity(0.15)
+            return themeColor.opacity(0.2)
         } else if isInSameRowOrCol {
             return themeColor.opacity(0.08)
         } else if isInSameBlock {
@@ -834,22 +835,41 @@ struct SudokuCellView: View {
             #endif
         }) {
             ZStack {
-                Rectangle()
+                // Arka plan
+                RoundedRectangle(cornerRadius: 4)
                     .fill(backgroundColor)
                     .frame(width: cellSize, height: cellSize)
+                
+                // Sayı olan hücreler için özel arka plan
+                if value != nil {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(
+                            isDarkMode ? 
+                            (isEditable ? Color.gray.opacity(0.2) : Color.gray.opacity(0.3)) : 
+                            (isEditable ? Color.white : Color.white.opacity(0.9))
+                        )
+                        .shadow(
+                            color: isHighlightedNumber ? themeColor.opacity(0.5) : Color.black.opacity(0.1),
+                            radius: isHighlightedNumber ? 3 : 1,
+                            x: 0,
+                            y: 1
+                        )
+                        .frame(width: cellSize - 2, height: cellSize - 2)
+                }
                 
                 cellContent
             }
         }
         .buttonStyle(PlainButtonStyle())
         .overlay(
-            RoundedRectangle(cornerRadius: 2)
+            RoundedRectangle(cornerRadius: 4)
                 .stroke(
                     isSelected ? themeColor : (isDarkMode ? Color.white.opacity(0.2) : Color.black.opacity(0.2)), 
-                    lineWidth: isSelected ? 2 : 0.5 // Seçili değilse de ince bir çizgi ekle
+                    lineWidth: isSelected ? 2 : 0.5
                 )
         )
-        .scaleEffect(isSelected ? 1.01 : 1.0)
+        .scaleEffect(isSelected ? 1.02 : 1.0)
+        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
     }
     
     @ViewBuilder
@@ -857,10 +877,12 @@ struct SudokuCellView: View {
         if let value = value {
             // Ana sayı
             Text("\(value)")
-                .font(.system(size: fontSize, weight: isEditable ? .regular : .bold))
+                .font(.system(size: fontSize, weight: isEditable ? .medium : .bold, design: .rounded))
                 .foregroundColor(textColor)
                 .opacity(isHighlightedNumber ? 1.0 : 0.9)
-                .shadow(color: isHighlightedNumber ? themeColor.opacity(0.3) : Color.clear, radius: 0.5)
+                .shadow(color: isHighlightedNumber ? themeColor.opacity(0.5) : Color.clear, radius: 1)
+                .scaleEffect(isHighlightedNumber ? 1.1 : 1.0)
+                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isHighlightedNumber)
         } else if !notes.isEmpty {
             // Notlar
             notesGrid
