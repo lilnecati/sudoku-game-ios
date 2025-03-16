@@ -269,10 +269,11 @@ struct ContentView: View {
                                 HStack {
                                     Image(systemName: noteMode ? "pencil.circle.fill" : "pencil.circle")
                                     Text("Not Modu")
+                                        .font(.system(size: UIScreen.main.bounds.width < 400 ? 13 : 15))
                                 }
                                 .foregroundColor(noteMode ? .white : (isDarkMode ? .white : .black))
                                 .padding(.vertical, 8)
-                                .padding(.horizontal, 12)
+                                .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 8 : 12)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(noteMode ? themeColor : (isDarkMode ? Color.gray.opacity(0.3) : Color.gray.opacity(0.1)))
@@ -280,7 +281,7 @@ struct ContentView: View {
                                 )
                             }
                         }
-                        .padding(.horizontal)
+                        .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 5 : 15)
                         
                         Spacer()
                         
@@ -382,9 +383,10 @@ struct ContentView: View {
                             HStack {
                                 Image(systemName: "delete.left")
                                 Text("Sil")
+                                    .font(.system(size: UIScreen.main.bounds.width < 400 ? 14 : 16))
                             }
                             .padding(.vertical, 8)
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 15 : 20)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(Color.red.opacity(0.8))
@@ -392,7 +394,7 @@ struct ContentView: View {
                             .foregroundColor(.white)
                             .shadow(color: Color.red.opacity(0.3), radius: 2, x: 0, y: 1)
                         }
-                        .padding(.bottom)
+                        .padding(.bottom, UIScreen.main.bounds.width < 400 ? 5 : 10)
                         
                         // Alt bilgi çubuğu
                         HStack {
