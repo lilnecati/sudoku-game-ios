@@ -50,7 +50,7 @@ class SudokuModel: ObservableObject {
         }
     }
     
-    private func isValid(_ number: Int, at row: Int, col: Int) -> Bool {
+    func isValid(_ number: Int, at row: Int, col: Int) -> Bool {
         // Satır kontrolü
         for i in 0..<9 {
             if grid[row][i] == number && i != col {
