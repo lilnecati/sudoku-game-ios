@@ -14,7 +14,6 @@ class SudokuModel: ObservableObject {
     @Published var originalGrid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
     @Published var selectedCell: (row: Int, col: Int)? = nil
     @Published var isShaking = false
-    @Published var difficulty: Difficulty = .orta
     @Published var gameTime: TimeInterval = 0
     @Published var mistakes: Int = 0
     @Published var isGameComplete: Bool = false
@@ -26,7 +25,18 @@ class SudokuModel: ObservableObject {
     private var validMovesCache: [String: Bool] = [:]
     private var cellEditabilityCache: [String: Bool] = [:]
     
+    // Zorluk seviyesi için UserDefaults kullanımı
+    @Published var difficulty: Difficulty {
+        didSet {
+            UserDefaults.standard.set(difficulty.rawValue, forKey: "difficulty")
+        }
+    }
+    
     init() {
+        // UserDefaults'tan zorluk seviyesini yükle
+        let savedDifficulty = UserDefaults.standard.string(forKey: "difficulty") ?? Difficulty.orta.rawValue
+        self.difficulty = Difficulty.allCases.first { $0.rawValue == savedDifficulty } ?? .orta
+        
         generateNewGame()
         // Timer'ı ContentView'da başlatacağız
     }

@@ -51,20 +51,47 @@ struct ContentView: View {
     @State private var showConfetti = false
     @State private var showingStats = false
     @State private var showingHint = false
-    @State private var selectedTheme: ThemeColor = .blue
+    @AppStorage("selectedTheme") private var selectedThemeRaw: String = "blue"
     @State private var noteMode = false
     @State private var notes: [[[Int]]] = Array(repeating: Array(repeating: [], count: 9), count: 9)
     @State private var showingWelcomeScreen = false
     @State private var isLoading = false
     @Environment(\.colorScheme) var colorScheme
     @State private var showingGameCompleteAlert = false
-    @State private var userColorScheme: ColorScheme? = nil
+    @AppStorage("userColorScheme") private var userColorSchemeRaw: String = "system"
     @State private var completedNumbers: Set<Int> = []
     
     // Sabit değerler - performans için önceden hesaplanır
     private let buttonSize: CGFloat = UIScreen.main.bounds.width < 375 ? 40 : 45
     private let numberButtonPadding: CGFloat = UIScreen.main.bounds.width < 375 ? 4 : 6
     private let numberButtonFontSize: CGFloat = UIScreen.main.bounds.width < 375 ? 20 : 22
+    
+    private var selectedTheme: ThemeColor {
+        get {
+            ThemeColor.allCases.first { $0.rawValue == selectedThemeRaw } ?? .blue
+        }
+        set {
+            selectedThemeRaw = newValue.rawValue
+        }
+    }
+    
+    private var userColorScheme: ColorScheme? {
+        get {
+            switch userColorSchemeRaw {
+            case "light": return .light
+            case "dark": return .dark
+            default: return nil
+            }
+        }
+        set {
+            switch newValue {
+            case .light: userColorSchemeRaw = "light"
+            case .dark: userColorSchemeRaw = "dark"
+            case .none: userColorSchemeRaw = "system"
+            @unknown default: userColorSchemeRaw = "system"
+            }
+        }
+    }
     
     private var isDarkMode: Bool {
         userColorScheme == .dark || (userColorScheme == nil && colorScheme == .dark)
