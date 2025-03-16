@@ -7,6 +7,7 @@ class SudokuModel: ObservableObject {
     @Published var mistakes: Int = 0
     @Published var gameTime: Int = 0
     @Published var isGameComplete: Bool = false
+    @Published var shakeGrid: Bool = false
     
     enum Difficulty: String, CaseIterable {
         case easy = "Kolay"
@@ -128,6 +129,11 @@ class SudokuModel: ObservableObject {
             checkGameCompletion()
         } else {
             mistakes += 1
+            // Hata yapınca sallama efekti için
+            shakeGrid = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.shakeGrid = false
+            }
         }
     }
     
