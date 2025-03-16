@@ -21,6 +21,10 @@ class SudokuModel: ObservableObject {
     // Hamle geçmişi
     private var moveHistory: [Move] = []
     
+    // Performans iyileştirmesi için ön hesaplanmış değerler
+    private var initialGrid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+    private var solution: [[Int]] = Array(repeating: Array(repeating: 0, count: 9), count: 9)
+    
     enum Difficulty: String, CaseIterable {
         case easy = "Kolay"
         case medium = "Orta"
@@ -45,7 +49,14 @@ class SudokuModel: ObservableObject {
         grid = Array(repeating: Array(repeating: nil, count: 9), count: 9)
         
         // Base sudoku çözümü oluştur
-        _ = solveSudoku()
+        generateSolution()
+        
+        // Çözümü kopyala
+        for row in 0..<9 {
+            for col in 0..<9 {
+                grid[row][col] = solution[row][col]
+            }
+        }
         
         // Zorluk seviyesine göre hücreleri boşalt
         let cellsToRemove = difficulty.emptyCellCount
@@ -61,9 +72,87 @@ class SudokuModel: ObservableObject {
             }
         }
         
+        // Başlangıç gridini kaydet
+        initialGrid = grid.map { $0.map { $0 } }
+        
         // Yeni oyun başladığında hamle geçmişini temizle
         moveHistory.removeAll()
         canUndo = false
+    }
+    
+    // Daha hızlı bir çözüm oluşturma algoritması
+    private func generateSolution() {
+        // Boş çözüm oluştur
+        solution = Array(repeating: Array(repeating: 0, count: 9), count: 9)
+        
+        // Önce ilk satırı karıştır
+        var numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        numbers.shuffle()
+        
+        for col in 0..<9 {
+            solution[0][col] = numbers[col]
+        }
+        
+        // Geri kalan ızgarayı çöz
+        if !solveGrid() {
+            // Çözüm bulunamazsa tekrar dene
+            generateSolution()
+        }
+    }
+    
+    private func solveGrid() -> Bool {
+        for row in 0..<9 {
+            for col in 0..<9 {
+                if solution[row][col] == 0 {
+                    var numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+                    numbers.shuffle() // Rastgele çözümler için
+                    
+                    for num in numbers {
+                        if isValidForSolution(num, at: row, col: col) {
+                            solution[row][col] = num
+                            
+                            if solveGrid() {
+                                return true
+                            }
+                            
+                            solution[row][col] = 0
+                        }
+                    }
+                    return false
+                }
+            }
+        }
+        return true
+    }
+    
+    private func isValidForSolution(_ number: Int, at row: Int, col: Int) -> Bool {
+        // Satır kontrolü
+        for i in 0..<9 {
+            if solution[row][i] == number {
+                return false
+            }
+        }
+        
+        // Sütun kontrolü
+        for i in 0..<9 {
+            if solution[i][col] == number {
+                return false
+            }
+        }
+        
+        // 3x3 kutu kontrolü
+        let boxRow = (row / 3) * 3
+        let boxCol = (col / 3) * 3
+        
+        for i in 0..<3 {
+            for j in 0..<3 {
+                if solution[boxRow + i][boxCol + j] == number {
+                    return false
+                }
+            }
+        }
+        
+        return true
     }
     
     func isValid(_ number: Int, at row: Int, col: Int) -> Bool {
@@ -94,6 +183,16 @@ class SudokuModel: ObservableObject {
         }
         
         return true
+    }
+    
+    // Hızlı ipucu için çözümden doğrudan kontrol
+    func getCorrectNumber(at row: Int, col: Int) -> Int? {
+        return solution[row][col]
+    }
+    
+    // Hücrenin değiştirilebilir olup olmadığını kontrol et
+    func isCellEditable(at row: Int, col: Int) -> Bool {
+        return initialGrid[row][col] == nil
     }
     
     private func solveSudoku() -> Bool {
@@ -140,6 +239,11 @@ class SudokuModel: ObservableObject {
     func placeNumber(_ number: Int) {
         guard let selectedCell = selectedCell else { return }
         
+        // Başlangıçta dolu olan hücreleri değiştirmeye izin verme
+        if initialGrid[selectedCell.row][selectedCell.col] != nil {
+            return
+        }
+        
         if isValid(number, at: selectedCell.row, col: selectedCell.col) {
             // Hamleyi geçmişe kaydet
             let move = Move(row: selectedCell.row, col: selectedCell.col, oldValue: grid[selectedCell.row][selectedCell.col], newValue: number)
@@ -160,6 +264,11 @@ class SudokuModel: ObservableObject {
     
     // Hücreyi temizleme fonksiyonu
     func clearCell(at row: Int, col: Int) {
+        // Başlangıçta dolu olan hücreleri değiştirmeye izin verme
+        if initialGrid[row][col] != nil {
+            return
+        }
+        
         if grid[row][col] != nil {
             // Hamleyi geçmişe kaydet
             let move = Move(row: row, col: col, oldValue: grid[row][col], newValue: nil)
