@@ -1427,24 +1427,25 @@ struct LoadingView: View {
                         .frame(width: 20, height: 20)
                         .scaleEffect(scaleEffect)
                     
-                    // Sudoku ızgara simgesi
+                    // Sudoku ızgara simgesi - Grid yerine manuel ızgara
                     ZStack {
                         Rectangle()
                             .fill(Color.clear)
                             .frame(width: 30, height: 30)
-                            .overlay(
-                                Grid(horizontalSpacing: 2, verticalSpacing: 2) {
-                                    ForEach(0..<3, id: \.self) { _ in
-                                        GridRow {
-                                            ForEach(0..<3, id: \.self) { _ in
-                                                RoundedRectangle(cornerRadius: 1)
-                                                    .fill(isDarkMode ? .white : themeColor)
-                                                    .opacity(0.8)
-                                            }
-                                        }
+                        
+                        // Manuel ızgara oluşturma
+                        VStack(spacing: 2) {
+                            ForEach(0..<3, id: \.self) { row in
+                                HStack(spacing: 2) {
+                                    ForEach(0..<3, id: \.self) { col in
+                                        RoundedRectangle(cornerRadius: 1)
+                                            .fill(isDarkMode ? .white : themeColor)
+                                            .opacity(0.8)
+                                            .frame(width: 8, height: 8)
                                     }
                                 }
-                            )
+                            }
+                        }
                     }
                     .scaleEffect(0.8)
                 }
