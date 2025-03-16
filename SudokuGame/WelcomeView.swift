@@ -9,6 +9,7 @@ struct WelcomeView: View {
     @State private var isLoggedIn = false
     @State private var username = ""
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
     
     // Animasyon için state değişkenleri
     @State private var logoScale: CGFloat = 0.8
@@ -166,7 +167,15 @@ struct WelcomeView: View {
                         .padding(.horizontal)
                         
                         // Oyuna başla butonu
-                        NavigationLink(destination: ContentView().navigationBarBackButtonHidden()) {
+                        Button(action: {
+                            // Zorluk seviyesini ayarla ve oyunu başlat
+                            UserDefaults.standard.set(selectedDifficulty.rawValue, forKey: "difficulty")
+                            UserDefaults.standard.synchronize()
+                            
+                            // Ekranı kapat
+                            isGameStarted = true
+                            dismiss()
+                        }) {
                             HStack {
                                 Image(systemName: "play.fill")
                                     .font(.headline)

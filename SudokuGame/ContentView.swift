@@ -189,13 +189,27 @@ struct ContentView: View {
                 sudokuModel.gameTime = 0
                 
                 // Yükleme ekranını gösterdikten sonra oyunu başlat
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    startTimer()
-                    updateCompletedNumbers()
-                    
-                    // Yükleme ekranını kapat
-                    withAnimation {
-                        isLoading = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    // Yeni oyun oluşturma işlemini arka planda yap
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        // Sudoku çözümünü oluştur (en yoğun işlem)
+                        autoreleasepool {
+                            self.sudokuModel.prepareNewGame()
+                        }
+                        
+                        // UI güncellemelerini ana thread'de yap
+                        DispatchQueue.main.async {
+                            // Model güncellemesini tamamla
+                            self.sudokuModel.finalizeNewGame()
+                            
+                            startTimer()
+                            updateCompletedNumbers()
+                            
+                            // Yükleme ekranını kapat
+                            withAnimation {
+                                isLoading = false
+                            }
+                        }
                     }
                 }
             }
@@ -977,21 +991,26 @@ struct SudokuCellView: View {
     }
     
     private var notesGrid: some View {
-        // Daha verimli not gösterimi
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 3), spacing: 0) {
-            ForEach(1...9, id: \.self) { number in
-                if notes.contains(number) {
-                    Text("\(number)")
-                        .font(.system(size: notesFontSize))
-                        .foregroundColor(
-                            number == selectedNumber ? 
-                            (isDarkMode ? themeColor.opacity(0.9) : themeColor.opacity(0.8)) : 
-                            (isDarkMode ? Color.white.opacity(0.6) : Color.black.opacity(0.6))
-                        )
-                        .frame(width: notesItemSize, height: notesItemSize)
-                } else {
-                    Color.clear
-                        .frame(width: notesItemSize, height: notesItemSize)
+        // Daha verimli not gösterimi - LazyVGrid yerine manuel grid
+        VStack(spacing: 0) {
+            ForEach(0..<3) { row in
+                HStack(spacing: 0) {
+                    ForEach(0..<3) { col in
+                        let number = row * 3 + col + 1
+                        if notes.contains(number) {
+                            Text("\(number)")
+                                .font(.system(size: notesFontSize))
+                                .foregroundColor(
+                                    number == selectedNumber ? 
+                                    (isDarkMode ? themeColor.opacity(0.9) : themeColor.opacity(0.8)) : 
+                                    (isDarkMode ? Color.white.opacity(0.6) : Color.black.opacity(0.6))
+                                )
+                                .frame(width: notesItemSize, height: notesItemSize)
+                        } else {
+                            Color.clear
+                                .frame(width: notesItemSize, height: notesItemSize)
+                        }
+                    }
                 }
             }
         }
@@ -1452,7 +1471,7 @@ struct LoadingView: View {
                                 HStack(spacing: 2) {
                                     ForEach(0..<3, id: \.self) { col in
                                         RoundedRectangle(cornerRadius: 1)
-                                            .fill(isDarkMode ? .white : themeColor)
+                                            .fill(isDarkMode ? Color.white : themeColor)
                                             .opacity(0.8)
                                             .frame(width: 8, height: 8)
                                     }
@@ -1466,7 +1485,7 @@ struct LoadingView: View {
                 // İpucu metni
                 Text(tips[tipIndex])
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(isDarkMode ? .white.opacity(0.9) : .black.opacity(0.7))
+                    .foregroundColor(isDarkMode ? Color.white.opacity(0.9) : Color.black.opacity(0.7))
                     .multilineTextAlignment(.center)
                     .frame(height: 40)
                     .frame(width: 250)
