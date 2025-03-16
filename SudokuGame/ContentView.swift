@@ -104,9 +104,6 @@ struct ContentView: View {
                         
                         // Geliştirilmiş rakam seçici
                         numberPickerView
-                        
-                        // Geliştirilmiş silme butonu
-                        deleteButton
                     }
                 }
             }
@@ -381,10 +378,13 @@ struct ContentView: View {
                         endPoint: .bottomTrailing
                     )
                 )
-                .shadow(color: isDarkMode ? Color.black.opacity(0.3) : Color.gray.opacity(0.3), radius: 5, x: 0, y: 2)
         )
         .cornerRadius(8)
         .padding(5)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(isDarkMode ? Color.white.opacity(0.5) : Color.black.opacity(0.5), lineWidth: 3) // Dış çerçeveyi daha belirgin yap
+        )
         .scaleEffect(sudokuModel.isShaking ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: sudokuModel.isShaking)
         .rotation3DEffect(
@@ -513,113 +513,6 @@ struct ContentView: View {
         .buttonStyle(PlainButtonStyle())
     }
     
-    private var deleteButton: some View {
-        Button(action: {
-            deleteButtonAction()
-        }) {
-            HStack {
-                Image(systemName: "delete.left.fill")
-                    .font(.system(size: UIScreen.main.bounds.width >= 390 ? 18 : 16))
-                Text("Sil")
-                    .font(.system(size: UIScreen.main.bounds.width >= 390 ? 16 : 14, weight: .semibold))
-            }
-            .padding(.vertical, 10)
-            .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 25 : 20)
-            .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.red.opacity(0.8), Color.red]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-            )
-            .foregroundColor(.white)
-            .shadow(color: Color.red.opacity(0.4), radius: 3, x: 0, y: 2)
-        }
-        .padding(.bottom, 10)
-    }
-    
-    // MARK: - Yardımcı fonksiyonlar
-    
-    private func numberButtonAction(number: Int) {
-        if let selected = sudokuModel.selectedCell {
-            if noteMode {
-                // Not modu aktifse, notu ekle veya çıkar
-                withAnimation(.easeInOut(duration: 0.1)) {
-                    toggleNote(number: number, at: selected)
-                    
-                    // Haptic feedback - sadece iOS cihazlarda
-                    #if os(iOS)
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred(intensity: 0.5)
-                    #endif
-                }
-            } else if sudokuModel.grid[selected.row][selected.col] == nil {
-                // Normal mod, sayıyı yerleştir
-                withAnimation(.easeInOut(duration: 0.1)) {
-                    let success = sudokuModel.isValidMove(number: number, at: selected.row, col: selected.col)
-                    
-                    if success {
-                        sudokuModel.grid[selected.row][selected.col] = number
-                        
-                        // Notları temizle
-                        notes[selected.row][selected.col] = []
-                        
-                        // Oyun tamamlandı mı kontrol et
-                        sudokuModel.checkGameCompletion()
-                    } else {
-                        sudokuModel.shake()
-                        sudokuModel.mistakes += 1
-                    }
-                    
-                    // Haptic feedback - sadece iOS cihazlarda
-                    #if os(iOS)
-                    let generator = UIImpactFeedbackGenerator(style: success ? .medium : .heavy)
-                    generator.impactOccurred(intensity: success ? 0.7 : 1.0)
-                    #endif
-                }
-            }
-        }
-        withAnimation(.easeInOut(duration: 0.1)) {
-            selectedNumber = number
-        }
-    }
-    
-    private func deleteButtonAction() {
-        if let selected = sudokuModel.selectedCell {
-            withAnimation(.easeInOut(duration: 0.1)) {
-                if noteMode {
-                    // Not modunda tüm notları temizle
-                    notes[selected.row][selected.col] = []
-                } else if sudokuModel.grid[selected.row][selected.col] != nil && sudokuModel.isCellEditable(at: selected.row, col: selected.col) {
-                    // Normal modda hücreyi temizle
-                    sudokuModel.grid[selected.row][selected.col] = nil
-                }
-                
-                // Haptic feedback - sadece iOS cihazlarda
-                #if os(iOS)
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred(intensity: 0.5)
-                #endif
-            }
-        }
-    }
-    
-    private func toggleNote(number: Int, at cell: (row: Int, col: Int)) {
-        if sudokuModel.grid[cell.row][cell.col] != nil {
-            return // Eğer hücrede zaten bir sayı varsa not eklenemez
-        }
-        
-        if notes[cell.row][cell.col].contains(number) {
-            // Notu kaldır
-            notes[cell.row][cell.col].removeAll { $0 == number }
-        } else {
-            // Notu ekle
-            notes[cell.row][cell.col].append(number)
-            notes[cell.row][cell.col].sort()
-        }
-    }
-    
     private func showHint() {
         showingHint = true
     }
@@ -659,7 +552,12 @@ struct ContentView: View {
     }
     
     private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+        // Önceki zamanlayıcıyı iptal et
+        timer?.invalidate()
+        
+        // Yeni zamanlayıcı oluştur - 1 saniye aralıklarla
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
             self.sudokuModel.gameTime += 1
         }
     }
@@ -766,10 +664,10 @@ struct SudokuBlock: View {
         }
         .background(blockBackground)
         .cornerRadius(4)
-        .padding(0.5)
+        .padding(1) // Bloklar arası boşluğu artır
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(isDarkMode ? Color.gray.opacity(0.6) : Color.gray.opacity(0.5), lineWidth: 1.5)
+                .stroke(isDarkMode ? Color.white.opacity(0.4) : Color.black.opacity(0.4), lineWidth: 2) // Çizgi kalınlığını ve rengini değiştir
         )
     }
 }
@@ -886,7 +784,10 @@ struct SudokuCellView: View {
         .buttonStyle(PlainButtonStyle())
         .overlay(
             RoundedRectangle(cornerRadius: 2)
-                .stroke(isSelected ? themeColor : Color.clear, lineWidth: isSelected ? 2 : 0)
+                .stroke(
+                    isSelected ? themeColor : (isDarkMode ? Color.white.opacity(0.2) : Color.black.opacity(0.2)), 
+                    lineWidth: isSelected ? 2 : 0.5 // Seçili değilse de ince bir çizgi ekle
+                )
         )
         .scaleEffect(isSelected ? 1.01 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isSelected)
