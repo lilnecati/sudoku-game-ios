@@ -399,7 +399,7 @@ struct ContentView: View {
         .overlay(gridOverlay)
         .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 5 : 2)
         .scaleEffect(sudokuModel.shakeGrid ? 0.95 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: sudokuModel.shakeGrid)
+        .animation(.easeInOut(duration: 0.2), value: sudokuModel.shakeGrid)
         .frame(
             maxWidth: min(UIScreen.main.bounds.width - 8, UIScreen.main.bounds.height * 0.8),
             maxHeight: min(UIScreen.main.bounds.width - 8, UIScreen.main.bounds.height * 0.8)
@@ -413,11 +413,24 @@ struct ContentView: View {
             perspective: 0.3
         )
         .animation(gridCompletionAnimation, value: sudokuModel.isGameComplete)
+        .drawingGroup() // Metal hızlandırma için
     }
     
     private var gridBackground: some View {
         RoundedRectangle(cornerRadius: 16)
-            .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
+            .fill(
+                isDarkMode ? 
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.black.opacity(0.4), Color.black.opacity(0.2)]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ) :
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.white, Color.white.opacity(0.9)]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .shadow(color: isDarkMode ? Color.black.opacity(0.5) : Color.gray.opacity(0.3), radius: 15, x: 0, y: 8)
     }
     
@@ -512,41 +525,43 @@ struct ContentView: View {
         if let selected = sudokuModel.selectedCell {
             if noteMode {
                 // Not modu aktifse, notu ekle veya çıkar
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                withAnimation(.easeInOut(duration: 0.15)) {
                     toggleNote(number: number, at: selected)
+                    
+                    // Haptic feedback
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred()
                 }
             } else if sudokuModel.grid[selected.row][selected.col] == nil {
                 // Normal mod, sayıyı yerleştir
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                    // Sayı yerleştirme işlemini arka planda yap
-                    DispatchQueue.global(qos: .userInitiated).async {
-                        DispatchQueue.main.async {
-                            sudokuModel.placeNumber(number)
-                        }
-                    }
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    let success = sudokuModel.placeNumber(number)
+                    
+                    // Haptic feedback
+                    let generator = UIImpactFeedbackGenerator(style: success ? .medium : .heavy)
+                    generator.impactOccurred()
                 }
             }
         }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+        withAnimation(.easeInOut(duration: 0.15)) {
             selectedNumber = number
         }
     }
     
     private func deleteButtonAction() {
         if let selected = sudokuModel.selectedCell {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+            withAnimation(.easeInOut(duration: 0.15)) {
                 if noteMode {
                     // Not modunda tüm notları temizle
                     notes[selected.row][selected.col] = []
                 } else if sudokuModel.grid[selected.row][selected.col] != nil {
                     // Normal modda hücreyi temizle
-                    // Silme işlemini arka planda yap
-                    DispatchQueue.global(qos: .userInitiated).async {
-                        DispatchQueue.main.async {
-                            sudokuModel.clearCell(at: selected.row, col: selected.col)
-                        }
-                    }
+                    sudokuModel.clearCell(at: selected.row, col: selected.col)
                 }
+                
+                // Haptic feedback
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
             }
         }
     }
@@ -669,9 +684,9 @@ struct SudokuBlock: View {
     let isDarkMode: Bool
     
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 0) {
             ForEach(0..<3) { row in
-                HStack(spacing: 3) {
+                HStack(spacing: 0) {
                     ForEach(0..<3) { col in
                         let actualRow = blockRow * 3 + row
                         let actualCol = blockCol * 3 + col
@@ -688,13 +703,23 @@ struct SudokuBlock: View {
                 }
             }
         }
-        .background(isDarkMode ? Color.gray.opacity(0.4) : Color.gray.opacity(0.3))
+        .background(blockBackground)
         .cornerRadius(4)
-        .padding(3)
+        .padding(0.5)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(isDarkMode ? Color.gray.opacity(0.8) : Color.gray.opacity(0.7), lineWidth: 5)
+                .stroke(isDarkMode ? Color.gray.opacity(0.6) : Color.gray.opacity(0.5), lineWidth: 1.5)
         )
+    }
+    
+    private var blockBackground: some View {
+        let isEvenBlock = (blockRow + blockCol) % 2 == 0
+        return Rectangle()
+            .fill(
+                isDarkMode ?
+                (isEvenBlock ? Color.gray.opacity(0.25) : Color.gray.opacity(0.3)) :
+                (isEvenBlock ? Color.gray.opacity(0.15) : Color.gray.opacity(0.2))
+            )
     }
 }
 
@@ -754,6 +779,11 @@ struct SudokuCellView: View {
         return (selectedCell.row / 3 == row / 3) && (selectedCell.col / 3 == col / 3)
     }
     
+    private var isHighlightedNumber: Bool {
+        guard let selectedNumber = sudokuModel.grid[sudokuModel.selectedCell?.row ?? 0][sudokuModel.selectedCell?.col ?? 0] else { return false }
+        return value == selectedNumber
+    }
+    
     private var isEditable: Bool {
         sudokuModel.isCellEditable(at: row, col: col)
     }
@@ -761,12 +791,14 @@ struct SudokuCellView: View {
     private var backgroundColor: Color {
         if isSelected {
             return themeColor.opacity(0.3)
+        } else if isHighlightedNumber && value != nil {
+            return themeColor.opacity(0.15)
         } else if isInSameRowOrCol {
-            return themeColor.opacity(0.1)
+            return themeColor.opacity(0.08)
         } else if isInSameBlock {
-            return themeColor.opacity(0.05)
+            return themeColor.opacity(0.04)
         } else {
-            return isDarkMode ? Color.black.opacity(0.2) : Color.white
+            return isDarkMode ? Color.black.opacity(0.1) : Color.white.opacity(0.7)
         }
     }
     
@@ -774,6 +806,8 @@ struct SudokuCellView: View {
         if !isEditable {
             // Başlangıç hücreleri için farklı renk
             return isDarkMode ? themeColor : themeColor.opacity(0.8)
+        } else if isHighlightedNumber {
+            return isDarkMode ? themeColor.opacity(0.9) : themeColor
         } else {
             return isDarkMode ? .white : .black
         }
@@ -781,8 +815,12 @@ struct SudokuCellView: View {
     
     var body: some View {
         Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+            withAnimation(.easeInOut(duration: 0.15)) {
                 sudokuModel.selectedCell = (row: row, col: col)
+                
+                // Haptic feedback
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
             }
         }) {
             ZStack {
@@ -796,9 +834,11 @@ struct SudokuCellView: View {
         .buttonStyle(PlainButtonStyle())
         .overlay(
             RoundedRectangle(cornerRadius: 2)
-                .stroke(isSelected ? themeColor : Color.gray.opacity(0.3), lineWidth: isSelected ? 3 : 1)
+                .stroke(isSelected ? themeColor : Color.clear, lineWidth: isSelected ? 2 : 0)
         )
-        .scaleEffect(isSelected ? 1.05 : 1.0)
+        .scaleEffect(isSelected ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isSelected)
+        .animation(.easeInOut(duration: 0.15), value: isHighlightedNumber)
     }
     
     @ViewBuilder
@@ -808,6 +848,8 @@ struct SudokuCellView: View {
             Text("\(value)")
                 .font(.system(size: fontSize, weight: isEditable ? .regular : .bold))
                 .foregroundColor(textColor)
+                .opacity(isHighlightedNumber ? 1.0 : 0.9)
+                .shadow(color: isHighlightedNumber ? themeColor.opacity(0.5) : Color.clear, radius: 1)
         } else if !notes.isEmpty {
             // Notlar
             notesGrid
@@ -815,9 +857,9 @@ struct SudokuCellView: View {
     }
     
     private var notesGrid: some View {
-        VStack(spacing: 1) {
+        VStack(spacing: 0) {
             ForEach(0..<3) { row in
-                HStack(spacing: 1) {
+                HStack(spacing: 0) {
                     ForEach(1...3, id: \.self) { col in
                         noteCell(for: row * 3 + col)
                     }
@@ -832,7 +874,11 @@ struct SudokuCellView: View {
         if notes.contains(number) {
             Text("\(number)")
                 .font(.system(size: notesFontSize))
-                .foregroundColor(isDarkMode ? .white.opacity(0.7) : .black.opacity(0.7))
+                .foregroundColor(
+                    number == selectedNumber ? 
+                    (isDarkMode ? themeColor.opacity(0.9) : themeColor.opacity(0.8)) : 
+                    (isDarkMode ? .white.opacity(0.6) : .black.opacity(0.6))
+                )
                 .frame(width: notesItemSize, height: notesItemSize)
         } else {
             Text("")
