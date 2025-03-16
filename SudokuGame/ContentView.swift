@@ -316,41 +316,36 @@ struct ContentView: View {
     
     private var noteModeButton: some View {
         Button(action: {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+            withAnimation(.easeInOut(duration: 0.1)) {
                 noteMode.toggle()
+                
+                // Haptic feedback
+                #if os(iOS)
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                #endif
             }
         }) {
             HStack {
                 Image(systemName: noteMode ? "pencil.circle.fill" : "pencil.circle")
-                    .font(.system(size: numberButtonFontSize + 2))
-                Text("Not Modu")
-                    .font(.system(size: numberButtonFontSize, weight: noteMode ? .semibold : .medium))
+                    .font(.system(size: 18))
+                Text(noteMode ? "Not Modu Açık" : "Not Modu")
+                    .font(.system(size: 14))
             }
-            .foregroundColor(noteMode ? .white : (isDarkMode ? .white : .black))
-            .padding(.vertical, 10)
-            .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 20 : 15)
-            .background(noteModeBackground)
+            .foregroundColor(noteMode ? themeColor : (isDarkMode ? .white : .black))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(noteMode ? themeColor.opacity(0.2) : (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(themeColor.opacity(noteMode ? 0.5 : 0.2), lineWidth: 1)
+            )
         }
-        .padding(.horizontal, numberButtonPadding)
+        .padding(.horizontal, 5)
         .padding(.top, 5)
-    }
-    
-    private var noteModeBackground: some View {
-        Group {
-            if noteMode {
-                LinearGradient(
-                    gradient: Gradient(colors: [themeColor.opacity(0.8), themeColor]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: themeColor.opacity(0.5), radius: 3, x: 0, y: 2)
-            } else {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isDarkMode ? Color.gray.opacity(0.3) : Color.gray.opacity(0.1))
-                    .shadow(color: Color.gray.opacity(0.2), radius: 2, x: 0, y: 1)
-            }
-        }
     }
     
     private var sudokuGridView: some View {
@@ -402,44 +397,132 @@ struct ContentView: View {
     }
     
     private var numberPickerView: some View {
-        HStack(spacing: 4) {
-            ForEach(1...9, id: \.self) { number in
-                Button(action: {
-                    numberButtonAction(number: number)
-                }) {
-                    Text("\(number)")
-                        .font(.system(size: UIScreen.main.bounds.width >= 390 ? 28 : 24, weight: .bold))
-                        .frame(width: buttonSize, height: buttonSize)
-                        .background(numberButtonBackground(for: number))
-                        .foregroundColor(selectedNumber == number ? .white : (isDarkMode ? .white : .black))
-                        .scaleEffect(selectedNumber == number ? 1.05 : 1.0)
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                ForEach(1...5, id: \.self) { number in
+                    numberButton(for: number)
                 }
-                .buttonStyle(PlainButtonStyle())
-            }
-        }
-        .padding(.horizontal, numberButtonPadding)
-        .padding(.vertical, 10)
-    }
-    
-    private func numberButtonBackground(for number: Int) -> some View {
-        ZStack {
-            if selectedNumber == number {
-                LinearGradient(
-                    gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .shadow(color: themeColor.opacity(0.5), radius: 3, x: 0, y: 2)
-            } else {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.2))
-                    .shadow(color: Color.gray.opacity(0.2), radius: 3, x: 0, y: 2)
             }
             
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(themeColor.opacity(0.3), lineWidth: 1)
+            HStack(spacing: 8) {
+                ForEach(6...9, id: \.self) { number in
+                    numberButton(for: number)
+                }
+                
+                // Silme butonu
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        if let cell = sudokuModel.selectedCell, sudokuModel.isCellEditable(at: cell.row, col: cell.col) {
+                            if noteMode {
+                                // Not modunda tüm notları temizle
+                                notes[cell.row][cell.col] = []
+                            } else {
+                                // Normal modda sayıyı sil
+                                sudokuModel.grid[cell.row][cell.col] = nil
+                            }
+                            
+                            // Haptic feedback
+                            #if os(iOS)
+                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            generator.impactOccurred(intensity: 0.5)
+                            #endif
+                        }
+                    }
+                }) {
+                    Image(systemName: "delete.left")
+                        .font(.system(size: numberButtonFontSize))
+                        .foregroundColor(isDarkMode ? .white : .black)
+                        .frame(width: buttonSize, height: buttonSize)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(isDarkMode ? Color.red.opacity(0.2) : Color.red.opacity(0.1))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                        )
+                }
+            }
         }
+        .padding(.vertical, 5)
+    }
+    
+    private func numberButton(for number: Int) -> some View {
+        let isSelected = selectedNumber == number
+        
+        return Button(action: {
+            withAnimation(.easeInOut(duration: 0.1)) {
+                selectedNumber = isSelected ? nil : number
+                
+                if let cell = sudokuModel.selectedCell, sudokuModel.isCellEditable(at: cell.row, col: cell.col) {
+                    if noteMode {
+                        // Not modunda
+                        if notes[cell.row][cell.col].contains(number) {
+                            notes[cell.row][cell.col].removeAll { $0 == number }
+                        } else {
+                            notes[cell.row][cell.col].append(number)
+                            notes[cell.row][cell.col].sort()
+                        }
+                        
+                        // Hafif haptic feedback
+                        #if os(iOS)
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred(intensity: 0.3)
+                        #endif
+                    } else {
+                        // Normal modda
+                        if sudokuModel.isValidMove(number: number, at: cell.row, col: cell.col) {
+                            sudokuModel.grid[cell.row][cell.col] = number
+                            
+                            // Orta haptic feedback
+                            #if os(iOS)
+                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                            generator.impactOccurred(intensity: 0.6)
+                            #endif
+                            
+                            // Notları temizle
+                            notes[cell.row][cell.col] = []
+                            
+                            // Oyun tamamlandı mı kontrol et
+                            sudokuModel.checkGameCompletion()
+                            
+                            if sudokuModel.isGameComplete {
+                                // Güçlü haptic feedback
+                                #if os(iOS)
+                                let generator = UINotificationFeedbackGenerator()
+                                generator.notificationOccurred(.success)
+                                #endif
+                            }
+                        } else {
+                            // Geçersiz hamle
+                            sudokuModel.shake()
+                            sudokuModel.mistakes += 1
+                            
+                            // Hata haptic feedback
+                            #if os(iOS)
+                            let generator = UINotificationFeedbackGenerator()
+                            generator.notificationOccurred(.error)
+                            #endif
+                        }
+                    }
+                }
+            }
+        }) {
+            Text("\(number)")
+                .font(.system(size: numberButtonFontSize, weight: isSelected ? .bold : .regular))
+                .foregroundColor(isSelected ? .white : (isDarkMode ? .white : .black))
+                .frame(width: buttonSize, height: buttonSize)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isSelected ? themeColor : (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(themeColor.opacity(isSelected ? 1.0 : 0.3), lineWidth: 1)
+                )
+                .shadow(color: isSelected ? themeColor.opacity(0.3) : Color.clear, radius: 2, x: 0, y: 1)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
     
     private var deleteButton: some View {
@@ -1181,327 +1264,5 @@ struct LoadingView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
-    }
-}
-
-class SudokuModel: ObservableObject {
-    enum Difficulty: String, CaseIterable, Identifiable {
-        case kolay = "Kolay"
-        case orta = "Orta"
-        case zor = "Zor"
-        
-        var id: String { self.rawValue }
-    }
-    
-    @Published var grid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
-    @Published var originalGrid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
-    @Published var selectedCell: (row: Int, col: Int)? = nil
-    @Published var isShaking = false
-    @Published var difficulty: Difficulty = .orta
-    @Published var gameTime: TimeInterval = 0
-    @Published var mistakes: Int = 0
-    @Published var isGameComplete: Bool = false
-    
-    private var timer: Timer?
-    private var solution: [[Int]] = Array(repeating: Array(repeating: 0, count: 9), count: 9)
-    
-    // Performans için önbelleğe alınmış değerler
-    private var validMovesCache: [String: Bool] = [:]
-    private var cellEditabilityCache: [String: Bool] = [:]
-    
-    init() {
-        generateNewGame()
-        startTimer()
-    }
-    
-    deinit {
-        timer?.invalidate()
-    }
-    
-    func generateNewGame() {
-        // Önbelleği temizle
-        validMovesCache.removeAll()
-        cellEditabilityCache.removeAll()
-        
-        // Yeni oyun oluştur
-        generateSolution()
-        selectedCell = nil
-        isShaking = false
-        gameTime = 0
-        mistakes = 0
-        isGameComplete = false
-        
-        // Zorluk seviyesine göre ipuçlarını belirle
-        var hints: Int
-        
-        switch difficulty {
-        case .kolay:
-            hints = 45 // Daha fazla ipucu = daha kolay
-        case .orta:
-            hints = 35
-        case .zor:
-            hints = 25 // Daha az ipucu = daha zor
-        }
-        
-        // Boş ızgara oluştur
-        grid = Array(repeating: Array(repeating: nil, count: 9), count: 9)
-        
-        // Rastgele ipuçlarını yerleştir
-        var positions = [(row: Int, col: Int)]()
-        for row in 0..<9 {
-            for col in 0..<9 {
-                positions.append((row: row, col: col))
-            }
-        }
-        positions.shuffle()
-        
-        for i in 0..<hints {
-            let pos = positions[i]
-            grid[pos.row][pos.col] = solution[pos.row][pos.col]
-        }
-        
-        // Orijinal ızgarayı kaydet
-        originalGrid = grid.map { $0.map { $0 } }
-        
-        // Zamanlayıcıyı yeniden başlat
-        timer?.invalidate()
-        startTimer()
-    }
-    
-    private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            self.gameTime += 1
-        }
-    }
-    
-    func stopTimer() {
-        timer?.invalidate()
-        timer = nil
-    }
-    
-    func shake() {
-        isShaking = true
-        
-        // Titreşimi 0.3 saniye sonra durdur
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            self?.isShaking = false
-        }
-    }
-    
-    func isCellEditable(at row: Int, col: Int) -> Bool {
-        let key = "\(row)-\(col)"
-        
-        // Önbellekte varsa, önbellekten döndür
-        if let cached = cellEditabilityCache[key] {
-            return cached
-        }
-        
-        // Yoksa hesapla ve önbelleğe al
-        let result = originalGrid[row][col] == nil
-        cellEditabilityCache[key] = result
-        return result
-    }
-    
-    func isValidMove(number: Int, at row: Int, col: Int) -> Bool {
-        let key = "\(row)-\(col)-\(number)"
-        
-        // Önbellekte varsa, önbellekten döndür
-        if let cached = validMovesCache[key] {
-            return cached
-        }
-        
-        // Satır kontrolü
-        for c in 0..<9 {
-            if grid[row][c] == number && c != col {
-                validMovesCache[key] = false
-                return false
-            }
-        }
-        
-        // Sütun kontrolü
-        for r in 0..<9 {
-            if grid[r][col] == number && r != row {
-                validMovesCache[key] = false
-                return false
-            }
-        }
-        
-        // Blok kontrolü
-        let blockRow = (row / 3) * 3
-        let blockCol = (col / 3) * 3
-        
-        for r in blockRow..<blockRow+3 {
-            for c in blockCol..<blockCol+3 {
-                if grid[r][c] == number && (r != row || c != col) {
-                    validMovesCache[key] = false
-                    return false
-                }
-            }
-        }
-        
-        // Geçerli hamle
-        validMovesCache[key] = true
-        return true
-    }
-    
-    func getHint() -> (row: Int, col: Int, value: Int)? {
-        // Boş hücreleri bul
-        var emptyCells = [(row: Int, col: Int)]()
-        
-        for row in 0..<9 {
-            for col in 0..<9 {
-                if grid[row][col] == nil && isCellEditable(at: row, col: col) {
-                    emptyCells.append((row: row, col: col))
-                }
-            }
-        }
-        
-        // Boş hücre yoksa ipucu verilemez
-        if emptyCells.isEmpty {
-            return nil
-        }
-        
-        // Rastgele bir boş hücre seç
-        if let randomCell = emptyCells.randomElement() {
-            let row = randomCell.row
-            let col = randomCell.col
-            let value = solution[row][col]
-            
-            return (row: row, col: col, value: value)
-        }
-        
-        return nil
-    }
-    
-    private func generateSolution() {
-        // Boş ızgara oluştur
-        solution = Array(repeating: Array(repeating: 0, count: 9), count: 9)
-        
-        // Çözümü oluştur
-        _ = solveSudoku()
-    }
-    
-    private func solveSudoku() -> Bool {
-        for row in 0..<9 {
-            for col in 0..<9 {
-                if solution[row][col] == 0 {
-                    // Rastgele sayı sırası oluştur
-                    var numbers = Array(1...9)
-                    numbers.shuffle()
-                    
-                    for num in numbers {
-                        if isSafe(row: row, col: col, num: num) {
-                            solution[row][col] = num
-                            
-                            if solveSudoku() {
-                                return true
-                            }
-                            
-                            solution[row][col] = 0
-                        }
-                    }
-                    
-                    return false
-                }
-            }
-        }
-        
-        return true
-    }
-    
-    private func isSafe(row: Int, col: Int, num: Int) -> Bool {
-        // Satır kontrolü
-        for c in 0..<9 {
-            if solution[row][c] == num {
-                return false
-            }
-        }
-        
-        // Sütun kontrolü
-        for r in 0..<9 {
-            if solution[r][col] == num {
-                return false
-            }
-        }
-        
-        // Blok kontrolü
-        let blockRow = (row / 3) * 3
-        let blockCol = (col / 3) * 3
-        
-        for r in blockRow..<blockRow+3 {
-            for c in blockCol..<blockCol+3 {
-                if solution[r][c] == num {
-                    return false
-                }
-            }
-        }
-        
-        return true
-    }
-    
-    func checkGameCompletion() {
-        // Tüm hücreler dolu mu kontrol et
-        for row in 0..<9 {
-            for col in 0..<9 {
-                if grid[row][col] == nil {
-                    isGameComplete = false
-                    return
-                }
-            }
-        }
-        
-        // Tüm satırlar, sütunlar ve bloklar geçerli mi kontrol et
-        for i in 0..<9 {
-            if !isValidRow(i) || !isValidColumn(i) || !isValidBlock(i / 3, i % 3) {
-                isGameComplete = false
-                return
-            }
-        }
-        
-        // Oyun tamamlandı
-        isGameComplete = true
-        timer?.invalidate()
-    }
-    
-    private func isValidRow(_ row: Int) -> Bool {
-        var seen = Set<Int>()
-        for col in 0..<9 {
-            if let num = grid[row][col] {
-                if seen.contains(num) {
-                    return false
-                }
-                seen.insert(num)
-            }
-        }
-        return seen.count == 9
-    }
-    
-    private func isValidColumn(_ col: Int) -> Bool {
-        var seen = Set<Int>()
-        for row in 0..<9 {
-            if let num = grid[row][col] {
-                if seen.contains(num) {
-                    return false
-                }
-                seen.insert(num)
-            }
-        }
-        return seen.count == 9
-    }
-    
-    private func isValidBlock(_ blockRow: Int, _ blockCol: Int) -> Bool {
-        var seen = Set<Int>()
-        for row in blockRow * 3..<blockRow * 3 + 3 {
-            for col in blockCol * 3..<blockCol * 3 + 3 {
-                if let num = grid[row][col] {
-                    if seen.contains(num) {
-                        return false
-                    }
-                    seen.insert(num)
-                }
-            }
-        }
-        return seen.count == 9
     }
 } 

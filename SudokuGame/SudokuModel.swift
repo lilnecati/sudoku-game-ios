@@ -1,163 +1,254 @@
 import Foundation
+import SwiftUI
 
 class SudokuModel: ObservableObject {
-    @Published var grid: [[Int?]]
-    @Published var selectedCell: (row: Int, col: Int)?
-    @Published var difficulty: Difficulty = .medium
-    @Published var mistakes: Int = 0
-    @Published var gameTime: Int = 0
-    @Published var isGameComplete: Bool = false
-    @Published var shakeGrid: Bool = false
-    @Published var canUndo: Bool = false
-    
-    // Hamle geçmişini tutacak yapı
-    private struct Move {
-        let row: Int
-        let col: Int
-        let oldValue: Int?
-        let newValue: Int?
+    enum Difficulty: String, CaseIterable, Identifiable {
+        case kolay = "Kolay"
+        case orta = "Orta"
+        case zor = "Zor"
+        
+        var id: String { self.rawValue }
     }
     
-    // Hamle geçmişi
-    private var moveHistory: [Move] = []
+    @Published var grid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+    @Published var originalGrid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+    @Published var selectedCell: (row: Int, col: Int)? = nil
+    @Published var isShaking = false
+    @Published var difficulty: Difficulty = .orta
+    @Published var gameTime: TimeInterval = 0
+    @Published var mistakes: Int = 0
+    @Published var isGameComplete: Bool = false
     
-    // Performans iyileştirmesi için ön hesaplanmış değerler
-    private var initialGrid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+    private var timer: Timer?
     private var solution: [[Int]] = Array(repeating: Array(repeating: 0, count: 9), count: 9)
     
-    enum Difficulty: String, CaseIterable {
-        case easy = "Kolay"
-        case medium = "Orta"
-        case hard = "Zor"
-        
-        var emptyCellCount: Int {
-            switch self {
-            case .easy: return 30
-            case .medium: return 40
-            case .hard: return 50
-            }
-        }
-    }
+    // Performans için önbelleğe alınmış değerler
+    private var validMovesCache: [String: Bool] = [:]
+    private var cellEditabilityCache: [String: Bool] = [:]
     
     init() {
-        grid = Array(repeating: Array(repeating: nil, count: 9), count: 9)
         generateNewGame()
+        startTimer()
+    }
+    
+    deinit {
+        timer?.invalidate()
     }
     
     func generateNewGame() {
-        // Boş grid oluştur
+        // Önbelleği temizle
+        validMovesCache.removeAll()
+        cellEditabilityCache.removeAll()
+        
+        // Yeni oyun oluştur
+        generateSolution()
+        selectedCell = nil
+        isShaking = false
+        gameTime = 0
+        mistakes = 0
+        isGameComplete = false
+        
+        // Zorluk seviyesine göre ipuçlarını belirle
+        var hints: Int
+        
+        switch difficulty {
+        case .kolay:
+            hints = 45 // Daha fazla ipucu = daha kolay
+        case .orta:
+            hints = 35
+        case .zor:
+            hints = 25 // Daha az ipucu = daha zor
+        }
+        
+        // Boş ızgara oluştur
         grid = Array(repeating: Array(repeating: nil, count: 9), count: 9)
         
-        // Çözüm oluşturma işlemini ana thread'de yapmak için kontrol
-        if !Thread.isMainThread {
-            DispatchQueue.main.sync {
-                self.generateSolution()
-            }
-        } else {
-            generateSolution()
-        }
-        
-        // Çözümü kopyala
+        // Rastgele ipuçlarını yerleştir
+        var positions = [(row: Int, col: Int)]()
         for row in 0..<9 {
             for col in 0..<9 {
-                grid[row][col] = solution[row][col]
+                positions.append((row: row, col: col))
             }
         }
+        positions.shuffle()
         
-        // Zorluk seviyesine göre hücreleri boşalt
-        let cellsToRemove = difficulty.emptyCellCount
-        var removedCells = 0
-        
-        while removedCells < cellsToRemove {
-            let row = Int.random(in: 0..<9)
-            let col = Int.random(in: 0..<9)
-            
-            if grid[row][col] != nil {
-                grid[row][col] = nil
-                removedCells += 1
-            }
+        for i in 0..<hints {
+            let pos = positions[i]
+            grid[pos.row][pos.col] = solution[pos.row][pos.col]
         }
         
-        // Başlangıç gridini kaydet
-        initialGrid = grid.map { $0.map { $0 } }
+        // Orijinal ızgarayı kaydet
+        originalGrid = grid.map { $0.map { $0 } }
         
-        // Yeni oyun başladığında hamle geçmişini temizle
-        moveHistory.removeAll()
-        canUndo = false
-        
-        // Hataları ve süreyi sıfırla
-        mistakes = 0
-        gameTime = 0
-        isGameComplete = false
+        // Zamanlayıcıyı yeniden başlat
+        timer?.invalidate()
+        startTimer()
     }
     
-    // Daha hızlı bir çözüm oluşturma algoritması
+    private func startTimer() {
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            self.gameTime += 1
+        }
+    }
+    
+    func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+    }
+    
+    func shake() {
+        isShaking = true
+        
+        // Titreşimi 0.3 saniye sonra durdur
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.isShaking = false
+        }
+    }
+    
+    func isCellEditable(at row: Int, col: Int) -> Bool {
+        let key = "\(row)-\(col)"
+        
+        // Önbellekte varsa, önbellekten döndür
+        if let cached = cellEditabilityCache[key] {
+            return cached
+        }
+        
+        // Yoksa hesapla ve önbelleğe al
+        let result = originalGrid[row][col] == nil
+        cellEditabilityCache[key] = result
+        return result
+    }
+    
+    func isValidMove(number: Int, at row: Int, col: Int) -> Bool {
+        let key = "\(row)-\(col)-\(number)"
+        
+        // Önbellekte varsa, önbellekten döndür
+        if let cached = validMovesCache[key] {
+            return cached
+        }
+        
+        // Satır kontrolü
+        for c in 0..<9 {
+            if grid[row][c] == number && c != col {
+                validMovesCache[key] = false
+                return false
+            }
+        }
+        
+        // Sütun kontrolü
+        for r in 0..<9 {
+            if grid[r][col] == number && r != row {
+                validMovesCache[key] = false
+                return false
+            }
+        }
+        
+        // Blok kontrolü
+        let blockRow = (row / 3) * 3
+        let blockCol = (col / 3) * 3
+        
+        for r in blockRow..<blockRow+3 {
+            for c in blockCol..<blockCol+3 {
+                if grid[r][c] == number && (r != row || c != col) {
+                    validMovesCache[key] = false
+                    return false
+                }
+            }
+        }
+        
+        // Geçerli hamle
+        validMovesCache[key] = true
+        return true
+    }
+    
+    func getHint() -> (row: Int, col: Int, value: Int)? {
+        // Boş hücreleri bul
+        var emptyCells = [(row: Int, col: Int)]()
+        
+        for row in 0..<9 {
+            for col in 0..<9 {
+                if grid[row][col] == nil && isCellEditable(at: row, col) {
+                    emptyCells.append((row: row, col: col))
+                }
+            }
+        }
+        
+        // Boş hücre yoksa ipucu verilemez
+        if emptyCells.isEmpty {
+            return nil
+        }
+        
+        // Rastgele bir boş hücre seç
+        if let randomCell = emptyCells.randomElement() {
+            let row = randomCell.row
+            let col = randomCell.col
+            let value = solution[row][col]
+            
+            return (row: row, col: col, value: value)
+        }
+        
+        return nil
+    }
+    
     private func generateSolution() {
-        // Boş çözüm oluştur
+        // Boş ızgara oluştur
         solution = Array(repeating: Array(repeating: 0, count: 9), count: 9)
         
-        // Önce ilk satırı karıştır
-        var numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        numbers.shuffle()
-        
-        for col in 0..<9 {
-            solution[0][col] = numbers[col]
-        }
-        
-        // Geri kalan ızgarayı çöz
-        if !solveGrid() {
-            // Çözüm bulunamazsa tekrar dene
-            generateSolution()
-        }
+        // Çözümü oluştur
+        _ = solveSudoku()
     }
     
-    private func solveGrid() -> Bool {
+    private func solveSudoku() -> Bool {
         for row in 0..<9 {
             for col in 0..<9 {
                 if solution[row][col] == 0 {
-                    var numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-                    numbers.shuffle() // Rastgele çözümler için
+                    // Rastgele sayı sırası oluştur
+                    var numbers = Array(1...9)
+                    numbers.shuffle()
                     
                     for num in numbers {
-                        if isValidForSolution(num, at: row, col: col) {
+                        if isSafe(row: row, col: col, num: num) {
                             solution[row][col] = num
                             
-                            if solveGrid() {
+                            if solveSudoku() {
                                 return true
                             }
                             
                             solution[row][col] = 0
                         }
                     }
+                    
                     return false
                 }
             }
         }
+        
         return true
     }
     
-    private func isValidForSolution(_ number: Int, at row: Int, col: Int) -> Bool {
+    private func isSafe(row: Int, col: Int, num: Int) -> Bool {
         // Satır kontrolü
-        for i in 0..<9 {
-            if solution[row][i] == number {
+        for c in 0..<9 {
+            if solution[row][c] == num {
                 return false
             }
         }
         
         // Sütun kontrolü
-        for i in 0..<9 {
-            if solution[i][col] == number {
+        for r in 0..<9 {
+            if solution[r][col] == num {
                 return false
             }
         }
         
-        // 3x3 kutu kontrolü
-        let boxRow = (row / 3) * 3
-        let boxCol = (col / 3) * 3
+        // Blok kontrolü
+        let blockRow = (row / 3) * 3
+        let blockCol = (col / 3) * 3
         
-        for i in 0..<3 {
-            for j in 0..<3 {
-                if solution[boxRow + i][boxCol + j] == number {
+        for r in blockRow..<blockRow+3 {
+            for c in blockCol..<blockCol+3 {
+                if solution[r][c] == num {
                     return false
                 }
             }
@@ -166,173 +257,68 @@ class SudokuModel: ObservableObject {
         return true
     }
     
-    func isValid(_ number: Int, at row: Int, col: Int) -> Bool {
-        // Satır kontrolü
-        for i in 0..<9 {
-            if grid[row][i] == number && i != col {
-                return false
-            }
-        }
-        
-        // Sütun kontrolü
-        for i in 0..<9 {
-            if grid[i][col] == number && i != row {
-                return false
-            }
-        }
-        
-        // 3x3 kutu kontrolü
-        let boxRow = (row / 3) * 3
-        let boxCol = (col / 3) * 3
-        
-        for i in 0..<3 {
-            for j in 0..<3 {
-                if grid[boxRow + i][boxCol + j] == number && (boxRow + i != row || boxCol + j != col) {
-                    return false
-                }
-            }
-        }
-        
-        return true
-    }
-    
-    // Hızlı ipucu için çözümden doğrudan kontrol
-    func getCorrectNumber(at row: Int, col: Int) -> Int? {
-        return solution[row][col]
-    }
-    
-    // Hücrenin değiştirilebilir olup olmadığını kontrol et
-    func isCellEditable(at row: Int, col: Int) -> Bool {
-        return initialGrid[row][col] == nil
-    }
-    
-    private func solveSudoku() -> Bool {
-        var row = -1
-        var col = -1
-        var isEmpty = false
-        
-        // Boş hücre bul
-        for i in 0..<9 {
-            for j in 0..<9 {
-                if grid[i][j] == nil {
-                    row = i
-                    col = j
-                    isEmpty = true
-                    break
-                }
-            }
-            if isEmpty {
-                break
-            }
-        }
-        
-        // Tüm hücreler dolu
-        if !isEmpty {
-            return true
-        }
-        
-        // Rakamları dene
-        for num in 1...9 {
-            if isValid(num, at: row, col: col) {
-                grid[row][col] = num
-                
-                if solveSudoku() {
-                    return true
-                }
-                
-                grid[row][col] = nil
-            }
-        }
-        
-        return false
-    }
-    
-    func placeNumber(_ number: Int) {
-        // Ana thread kontrolü
-        if !Thread.isMainThread {
-            DispatchQueue.main.async {
-                self.placeNumber(number)
-            }
-            return
-        }
-        
-        guard let selectedCell = selectedCell else { return }
-        
-        // Başlangıçta dolu olan hücreleri değiştirmeye izin verme
-        if initialGrid[selectedCell.row][selectedCell.col] != nil {
-            return
-        }
-        
-        if isValid(number, at: selectedCell.row, col: selectedCell.col) {
-            // Hamleyi geçmişe kaydet
-            let move = Move(row: selectedCell.row, col: selectedCell.col, oldValue: grid[selectedCell.row][selectedCell.col], newValue: number)
-            moveHistory.append(move)
-            canUndo = true
-            
-            grid[selectedCell.row][selectedCell.col] = number
-            checkGameCompletion()
-        } else {
-            mistakes += 1
-            // Hata yapınca sallama efekti için
-            shakeGrid = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.shakeGrid = false
-            }
-        }
-    }
-    
-    // Hücreyi temizleme fonksiyonu
-    func clearCell(at row: Int, col: Int) {
-        // Ana thread kontrolü
-        if !Thread.isMainThread {
-            DispatchQueue.main.async {
-                self.clearCell(at: row, col: col)
-            }
-            return
-        }
-        
-        // Başlangıçta dolu olan hücreleri değiştirmeye izin verme
-        if initialGrid[row][col] != nil {
-            return
-        }
-        
-        if grid[row][col] != nil {
-            // Hamleyi geçmişe kaydet
-            let move = Move(row: row, col: col, oldValue: grid[row][col], newValue: nil)
-            moveHistory.append(move)
-            canUndo = true
-            
-            grid[row][col] = nil
-        }
-    }
-    
-    // Son hamleyi geri alma fonksiyonu
-    func undoLastMove() {
-        // Ana thread kontrolü
-        if !Thread.isMainThread {
-            DispatchQueue.main.async {
-                self.undoLastMove()
-            }
-            return
-        }
-        
-        guard !moveHistory.isEmpty else { return }
-        
-        let lastMove = moveHistory.removeLast()
-        grid[lastMove.row][lastMove.col] = lastMove.oldValue
-        
-        // Geçmişte hamle kalmadıysa geri alma butonunu devre dışı bırak
-        canUndo = !moveHistory.isEmpty
-    }
-    
-    private func checkGameCompletion() {
+    func checkGameCompletion() {
+        // Tüm hücreler dolu mu kontrol et
         for row in 0..<9 {
             for col in 0..<9 {
                 if grid[row][col] == nil {
+                    isGameComplete = false
                     return
                 }
             }
         }
+        
+        // Tüm satırlar, sütunlar ve bloklar geçerli mi kontrol et
+        for i in 0..<9 {
+            if !isValidRow(i) || !isValidColumn(i) || !isValidBlock(i / 3, i % 3) {
+                isGameComplete = false
+                return
+            }
+        }
+        
+        // Oyun tamamlandı
         isGameComplete = true
+        timer?.invalidate()
+    }
+    
+    private func isValidRow(_ row: Int) -> Bool {
+        var seen = Set<Int>()
+        for col in 0..<9 {
+            if let num = grid[row][col] {
+                if seen.contains(num) {
+                    return false
+                }
+                seen.insert(num)
+            }
+        }
+        return seen.count == 9
+    }
+    
+    private func isValidColumn(_ col: Int) -> Bool {
+        var seen = Set<Int>()
+        for row in 0..<9 {
+            if let num = grid[row][col] {
+                if seen.contains(num) {
+                    return false
+                }
+                seen.insert(num)
+            }
+        }
+        return seen.count == 9
+    }
+    
+    private func isValidBlock(_ blockRow: Int, _ blockCol: Int) -> Bool {
+        var seen = Set<Int>()
+        for row in blockRow * 3..<blockRow * 3 + 3 {
+            for col in blockCol * 3..<blockCol * 3 + 3 {
+                if let num = grid[row][col] {
+                    if seen.contains(num) {
+                        return false
+                    }
+                    seen.insert(num)
+                }
+            }
+        }
+        return seen.count == 9
     }
 } 
