@@ -117,9 +117,6 @@ struct ContentView: View {
                         // Geliştirilmiş oyun bilgileri
                         gameInfoView
                         
-                        // Geliştirilmiş aksiyon butonları
-                        actionButtonsView
-                        
                         // Not modu butonu
                         noteModeButton
                         
@@ -336,140 +333,9 @@ struct ContentView: View {
                         .stroke(Color.red.opacity(0.3), lineWidth: 1.5)
                 }
             )
-            
-            // Zorluk seviyesi
-            Button(action: {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                    showingDifficultyPicker = true
-                }
-            }) {
-                HStack {
-                    Image(systemName: "slider.horizontal.3")
-                        .foregroundColor(themeSecondaryColor)
-                    Text("Zorluk")
-                        .foregroundColor(isDarkMode ? .white : .black)
-                        .font(.system(size: buttonFontSize, weight: .medium))
-                }
-                .padding(.vertical, 10)
-                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
-                .background(
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
-                            .shadow(color: themeSecondaryColor.opacity(0.3), radius: 3, x: 0, y: 2)
-                        
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(themeSecondaryColor.opacity(0.3), lineWidth: 1.5)
-                    }
-                )
-            }
         }
         .padding(.horizontal, horizontalPadding)
         .padding(.top, 5)
-    }
-    
-    private var actionButtonsView: some View {
-        HStack(spacing: UIScreen.main.bounds.width >= 390 ? 10 : 6) {
-            // Yeni oyun butonu
-            Button(action: {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                    startNewGame()
-                }
-            }) {
-                HStack {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: buttonFontSize))
-                    Text("Yeni Oyun")
-                        .font(.system(size: buttonFontSize, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .padding(.vertical, 12)
-                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
-                .background(
-                    LinearGradient(
-                        gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .shadow(color: themeColor.opacity(0.5), radius: 4, x: 0, y: 3)
-                )
-            }
-            
-            // Geri alma butonu
-            Button(action: {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                    // Geri alma işlemini arka planda yap
-                    DispatchQueue.global(qos: .userInitiated).async {
-                        DispatchQueue.main.async {
-                            sudokuModel.undoLastMove()
-                        }
-                    }
-                }
-            }) {
-                HStack {
-                    Image(systemName: "arrow.uturn.backward")
-                        .font(.system(size: buttonFontSize))
-                    Text("Geri Al")
-                        .font(.system(size: buttonFontSize, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .padding(.vertical, 12)
-                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
-                .background(undoButtonBackground)
-            }
-            .disabled(!sudokuModel.canUndo)
-            
-            // İpucu butonu
-            Button(action: {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                    showHint()
-                }
-            }) {
-                HStack {
-                    Image(systemName: "lightbulb.fill")
-                        .font(.system(size: buttonFontSize))
-                    Text("İpucu")
-                        .font(.system(size: buttonFontSize, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .padding(.vertical, 12)
-                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
-                .background(
-                    LinearGradient(
-                        gradient: Gradient(colors: [themeSecondaryColor.opacity(0.8), themeSecondaryColor]),
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .shadow(color: themeSecondaryColor.opacity(0.5), radius: 4, x: 0, y: 3)
-                )
-            }
-        }
-        .padding(.horizontal, horizontalPadding)
-        .padding(.top, 5)
-    }
-    
-    private var undoButtonBackground: some View {
-        Group {
-            if sudokuModel.canUndo {
-                LinearGradient(
-                    gradient: Gradient(colors: [themeColor.opacity(0.8), themeColor]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: themeColor.opacity(0.5), radius: 4, x: 0, y: 3)
-            } else {
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.gray.opacity(0.8), Color.gray]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: Color.gray.opacity(0.3), radius: 2, x: 0, y: 2)
-            }
-        }
     }
     
     private var noteModeButton: some View {
@@ -605,7 +471,7 @@ struct ContentView: View {
                 .shadow(color: themeColor.opacity(0.5), radius: 3, x: 0, y: 2)
             } else {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
+                    .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.2))
                     .shadow(color: Color.gray.opacity(0.2), radius: 3, x: 0, y: 2)
             }
             
