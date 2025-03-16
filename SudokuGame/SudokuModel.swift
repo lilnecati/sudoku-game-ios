@@ -121,54 +121,60 @@ class SudokuModel: ObservableObject {
         // Yeni çözüm oluştur (en yoğun işlem)
         generateSolution()
         
-        // Oyun durumunu sıfırla
-        selectedCell = nil
-        isShaking = false
-        gameTime = 0
-        mistakes = 0
-        isGameComplete = false
+        // NOT: UI güncellemelerini burada yapmıyoruz, finalizeNewGame'de yapılacak
     }
     
     // Yeni oyunu tamamla - UI thread'de çalıştırılacak hızlı işlemler
     func finalizeNewGame() {
-        // Zorluk seviyesine göre ipuçlarını belirle
-        var hints: Int
-        
-        switch difficulty {
-        case .kolay:
-            hints = 45 // Daha fazla ipucu = daha kolay
-        case .orta:
-            hints = 35
-        case .zor:
-            hints = 25 // Daha az ipucu = daha zor
-        }
-        
-        // Boş ızgara oluştur
-        grid = Array(repeating: Array(repeating: nil, count: 9), count: 9)
-        
-        // Rastgele ipuçlarını yerleştir
-        var positions = [(row: Int, col: Int)]()
-        for row in 0..<9 {
-            for col in 0..<9 {
-                positions.append((row: row, col: col))
+        // Oyun durumunu sıfırla - UI güncellemeleri ana thread'de yapılmalı
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            self.selectedCell = nil
+            self.isShaking = false
+            self.gameTime = 0
+            self.mistakes = 0
+            self.isGameComplete = false
+            
+            // Zorluk seviyesine göre ipuçlarını belirle
+            var hints: Int
+            
+            switch self.difficulty {
+            case .kolay:
+                hints = 45 // Daha fazla ipucu = daha kolay
+            case .orta:
+                hints = 35
+            case .zor:
+                hints = 25 // Daha az ipucu = daha zor
             }
+            
+            // Boş ızgara oluştur
+            self.grid = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+            
+            // Rastgele ipuçlarını yerleştir
+            var positions = [(row: Int, col: Int)]()
+            for row in 0..<9 {
+                for col in 0..<9 {
+                    positions.append((row: row, col: col))
+                }
+            }
+            positions.shuffle()
+            
+            for i in 0..<hints {
+                let pos = positions[i]
+                self.grid[pos.row][pos.col] = self.solution[pos.row][pos.col]
+            }
+            
+            // Orijinal ızgarayı kaydet
+            self.originalGrid = self.grid.map { $0.map { $0 } }
+            
+            // Zamanlayıcıyı yeniden başlat
+            self.timer?.invalidate()
+            self.startTimer()
+            
+            // Yeni oyun durumunu kaydet
+            self.saveGameState()
         }
-        positions.shuffle()
-        
-        for i in 0..<hints {
-            let pos = positions[i]
-            grid[pos.row][pos.col] = solution[pos.row][pos.col]
-        }
-        
-        // Orijinal ızgarayı kaydet
-        originalGrid = grid.map { $0.map { $0 } }
-        
-        // Zamanlayıcıyı yeniden başlat
-        timer?.invalidate()
-        startTimer()
-        
-        // Yeni oyun durumunu kaydet
-        saveGameState()
     }
     
     // Eski generateNewGame fonksiyonu - geriye dönük uyumluluk için
