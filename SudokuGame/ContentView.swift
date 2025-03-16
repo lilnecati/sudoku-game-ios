@@ -114,7 +114,7 @@ struct ContentView: View {
                 HowToPlayView()
             }
             .sheet(isPresented: $showingSettings) {
-                SettingsView(isPresented: $showingSettings, themeColor: $selectedTheme, sudokuModel: sudokuModel)
+                SettingsView(isPresented: $showingSettings, themeColor: $themeColor, sudokuModel: sudokuModel)
             }
             .sheet(isPresented: $showingDifficultyPicker) {
                 DifficultyPickerView(difficulty: $sudokuModel.difficulty, themeColor: themeColor)
@@ -557,7 +557,20 @@ struct ContentView: View {
             } else if sudokuModel.grid[selected.row][selected.col] == nil {
                 // Normal mod, sayıyı yerleştir
                 withAnimation(.easeInOut(duration: 0.1)) {
-                    let success = sudokuModel.placeNumber(number)
+                    let success = sudokuModel.isValidMove(number: number, at: selected.row, col: selected.col)
+                    
+                    if success {
+                        sudokuModel.grid[selected.row][selected.col] = number
+                        
+                        // Notları temizle
+                        notes[selected.row][selected.col] = []
+                        
+                        // Oyun tamamlandı mı kontrol et
+                        sudokuModel.checkGameCompletion()
+                    } else {
+                        sudokuModel.shake()
+                        sudokuModel.mistakes += 1
+                    }
                     
                     // Haptic feedback - sadece iOS cihazlarda
                     #if os(iOS)
@@ -578,9 +591,9 @@ struct ContentView: View {
                 if noteMode {
                     // Not modunda tüm notları temizle
                     notes[selected.row][selected.col] = []
-                } else if sudokuModel.grid[selected.row][selected.col] != nil {
+                } else if sudokuModel.grid[selected.row][selected.col] != nil && sudokuModel.isCellEditable(at: selected.row, col: selected.col) {
                     // Normal modda hücreyi temizle
-                    sudokuModel.clearCell(at: selected.row, col: selected.col)
+                    sudokuModel.grid[selected.row][selected.col] = nil
                 }
                 
                 // Haptic feedback - sadece iOS cihazlarda
@@ -664,14 +677,13 @@ struct ContentView: View {
     }
     
     private func formatTime(_ timeInterval: TimeInterval) -> String {
-        let hours = Int(timeInterval) / 3600
-        let minutes = Int(timeInterval) / 60 % 60
-        let seconds = Int(timeInterval) % 60
+        let minutes = Int(timeInterval) / 60
+        let remainingSeconds = Int(timeInterval) % 60
         
-        if hours > 0 {
-            return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+        if minutes > 0 {
+            return String(format: "%02d:%02d", minutes, remainingSeconds)
         } else {
-            return String(format: "%02d:%02d", minutes, seconds)
+            return String(format: "%02d", remainingSeconds)
         }
     }
     
@@ -744,7 +756,8 @@ struct SudokuBlock: View {
                             sudokuModel: sudokuModel,
                             notes: notes[actualRow][actualCol],
                             themeColor: themeColor,
-                            isDarkMode: isDarkMode
+                            isDarkMode: isDarkMode,
+                            selectedNumber: $selectedNumber
                         )
                         .id("\(actualRow)-\(actualCol)") // Sabit ID ile gereksiz yeniden render önlenir
                     }
@@ -768,6 +781,7 @@ struct SudokuCellView: View {
     let notes: [Int]
     let themeColor: Color
     let isDarkMode: Bool
+    @Binding var selectedNumber: Int?
     
     // Ekran boyutuna göre hücre boyutunu ayarla - hesaplamayı optimize et
     private let cellSize: CGFloat = {
@@ -963,7 +977,7 @@ struct DifficultyPickerView: View {
 }
 
 struct StatsView: View {
-    let gameTime: Int
+    let gameTime: TimeInterval
     let mistakes: Int
     let difficulty: SudokuModel.Difficulty
     let themeColor: Color
@@ -1019,9 +1033,9 @@ struct StatsView: View {
         }
     }
     
-    private func formatTime(_ seconds: Int) -> String {
-        let minutes = seconds / 60
-        let remainingSeconds = seconds % 60
+    private func formatTime(_ seconds: TimeInterval) -> String {
+        let minutes = Int(seconds) / 60
+        let remainingSeconds = Int(seconds) % 60
         return String(format: "%02d:%02d", minutes, remainingSeconds)
     }
     
@@ -1034,7 +1048,7 @@ struct StatsView: View {
         case .zor: difficultyMultiplier = 3
         }
         
-        let timeScore = max(0, 1000 - gameTime * 2)
+        let timeScore = max(0, 1000 - Int(gameTime) * 2)
         let mistakesPenalty = mistakes * 50
         
         return max(0, (timeScore - mistakesPenalty) * difficultyMultiplier)
@@ -1176,7 +1190,7 @@ struct SettingsView: View {
             // Yeni oyun butonu
             Button(action: {
                 withAnimation {
-                    sudokuModel.newGame()
+                    sudokuModel.generateNewGame()
                     isPresented = false
                 }
             }) {
