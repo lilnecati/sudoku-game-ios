@@ -166,97 +166,101 @@ struct WelcomeView: View {
                         .padding(.horizontal)
                         
                         // Oyuna başla butonu
-                        NavigationLink(destination: ContentView()
-                            .navigationBarBackButtonHidden(), isActive: $isGameStarted) {
-                            Button(action: {
-                                withAnimation {
-                                    isGameStarted = true
-                                }
-                            }) {
-                                HStack {
-                                    Image(systemName: "play.fill")
-                                        .font(.headline)
-                                    Text("OYUNA BAŞLA")
-                                        .font(.headline)
-                                }
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 60)
-                                .background(
-                                    LinearGradient(gradient: Gradient(colors: [primaryColor, secondaryColor]),
-                                                 startPoint: .leading, endPoint: .trailing)
-                                )
-                                .cornerRadius(15)
-                                .shadow(color: primaryColor.opacity(0.5), radius: 5, x: 0, y: 3)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 15)
-                                        .stroke(Color.white.opacity(0.3), lineWidth: 2)
-                                )
-                            }
-                            .padding(.horizontal, 30)
-                            .offset(y: buttonOffset)
-                            .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2), value: buttonOffset)
-                        }
-                        
-                        // Nasıl oynanır butonu
                         Button(action: {
-                            showingHowToPlay = true
+                            withAnimation {
+                                isGameStarted = true
+                            }
                         }) {
                             HStack {
-                                Image(systemName: "questionmark.circle")
-                                Text("Nasıl Oynanır?")
+                                Image(systemName: "play.fill")
+                                    .font(.headline)
+                                Text("OYUNA BAŞLA")
+                                    .font(.headline)
                             }
-                            .font(.subheadline)
-                            .foregroundColor(primaryColor)
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 20)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 60)
                             .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(primaryColor, lineWidth: 1.5)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(colorScheme == .dark ? Color.black.opacity(0.2) : Color.white.opacity(0.7))
-                                    )
+                                LinearGradient(gradient: Gradient(colors: [primaryColor, secondaryColor]),
+                                             startPoint: .leading, endPoint: .trailing)
+                            )
+                            .cornerRadius(15)
+                            .shadow(color: primaryColor.opacity(0.5), radius: 5, x: 0, y: 3)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 15)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 2)
                             )
                         }
-                        .padding(.top, 5)
-                        .sheet(isPresented: $showingHowToPlay) {
-                            HowToPlayView()
-                        }
+                        .padding(.horizontal, 30)
                         .offset(y: buttonOffset)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.3), value: buttonOffset)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2), value: buttonOffset)
+                        .navigationDestination(isPresented: $isGameStarted) {
+                            ContentView()
+                                .navigationBarBackButtonHidden()
+                        }
                     }
                     .opacity(contentOpacity)
                     .animation(.easeIn(duration: 0.8).delay(0.5), value: contentOpacity)
                     
                     Spacer()
                     
-                    // Alt bilgi
-                    VStack(spacing: 5) {
-                        Text("Sudoku Oyunu v1.0")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Text("© 2025 Necati Yıldırım")
-                            .font(.caption2)
-                            .foregroundColor(.secondary.opacity(0.7))
+                    // Nasıl oynanır butonu
+                    Button(action: {
+                        showingHowToPlay = true
+                    }) {
+                        HStack {
+                            Image(systemName: "questionmark.circle")
+                            Text("Nasıl Oynanır?")
+                        }
+                        .font(.subheadline)
+                        .foregroundColor(primaryColor)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(primaryColor, lineWidth: 1.5)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(colorScheme == .dark ? Color.black.opacity(0.2) : Color.white.opacity(0.7))
+                                )
+                        )
                     }
-                    .padding(.bottom, 20)
-                    .opacity(contentOpacity)
-                    .animation(.easeIn(duration: 0.8).delay(0.7), value: contentOpacity)
+                    .padding(.top, 5)
+                    .sheet(isPresented: $showingHowToPlay) {
+                        HowToPlayView()
+                    }
+                    .offset(y: buttonOffset)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.3), value: buttonOffset)
                 }
-            }
-            .onAppear {
-                // Animasyonları başlat
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    logoScale = 1.0
-                    titleOpacity = 1.0
-                    contentOpacity = 1.0
-                    buttonOffset = 0
+                .opacity(contentOpacity)
+                .animation(.easeIn(duration: 0.8).delay(0.5), value: contentOpacity)
+                
+                Spacer()
+                
+                // Alt bilgi
+                VStack(spacing: 5) {
+                    Text("Sudoku Oyunu v1.0")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text("© 2025 Necati Yıldırım")
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.7))
                 }
+                .padding(.bottom, 20)
+                .opacity(contentOpacity)
+                .animation(.easeIn(duration: 0.8).delay(0.7), value: contentOpacity)
             }
         }
-        .preferredColorScheme(colorScheme)
+        .onAppear {
+            // Animasyonları başlat
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                logoScale = 1.0
+                titleOpacity = 1.0
+                contentOpacity = 1.0
+                buttonOffset = 0
+            }
+        }
     }
 }
 

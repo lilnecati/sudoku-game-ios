@@ -556,9 +556,8 @@ struct ContentView: View {
         timer?.invalidate()
         
         // Yeni zamanlayıcı oluştur - 1 saniye aralıklarla
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            self.sudokuModel.gameTime += 1
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
+            sudokuModel.gameTime += 1
         }
     }
     
