@@ -166,44 +166,34 @@ struct WelcomeView: View {
                         )
                         .padding(.horizontal)
                         
-                        // Oyuna başla butonu
+                        // Başlat düğmesi
                         Button(action: {
-                            // Zorluk seviyesini ayarla ve oyunu başlat
-                            UserDefaults.standard.set(selectedDifficulty.rawValue, forKey: "difficulty")
-                            UserDefaults.standard.synchronize()
+                            // Seçilen zorluğu UserDefaults'a kaydet
+                            UserDefaults.standard.set(selectedDifficulty.rawValue, forKey: "selectedDifficulty")
                             
-                            // Ekranı kapat ve ContentView'a dön
-                            isGameStarted = true
+                            // Oyun başlatma bildirimini gönder
+                            NotificationCenter.default.post(name: NSNotification.Name("StartNewGame"), object: nil)
                             
-                            // Presentation modu kapat
+                            // Görünümü kapat
                             dismiss()
                             
-                            // Yeni oyun başlat
-                            NotificationCenter.default.post(name: NSNotification.Name("StartNewGame"), object: nil)
+                            // İstatistikleri güncelle
+                            gameStats.incrementGamesStarted()
+                            gameStats.setLastPlayedDate(Date())
                         }) {
-                            HStack {
-                                Image(systemName: "play.fill")
-                                    .font(.headline)
-                                Text("OYUNA BAŞLA")
-                                    .font(.headline)
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 60)
-                            .background(
-                                LinearGradient(gradient: Gradient(colors: [primaryColor, secondaryColor]),
-                                             startPoint: .leading, endPoint: .trailing)
-                            )
-                            .cornerRadius(15)
-                            .shadow(color: primaryColor.opacity(0.5), radius: 5, x: 0, y: 3)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 15)
-                                    .stroke(Color.white.opacity(0.3), lineWidth: 2)
-                            )
+                            Text("Oyuna Başla")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(primaryColor)
+                                        .shadow(color: primaryColor.opacity(0.5), radius: 5, x: 0, y: 3)
+                                )
                         }
-                        .padding(.horizontal, 30)
-                        .offset(y: buttonOffset)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2), value: buttonOffset)
+                        .padding(.horizontal)
+                        .padding(.top, 20)
                     }
                     .opacity(contentOpacity)
                     .animation(.easeIn(duration: 0.8).delay(0.5), value: contentOpacity)

@@ -207,7 +207,7 @@ struct ContentView: View {
                 }
                 
                 // Uygulama başladığında yükleme ekranını göster
-                withAnimation {
+                withAnimation(.easeIn(duration: 0.3)) {
                     isLoading = true
                 }
                 
@@ -257,7 +257,7 @@ struct ContentView: View {
             queue: .main
         ) { _ in
             // Yükleme ekranını göster ve yeni oyun başlat
-            withAnimation {
+            withAnimation(.easeIn(duration: 0.3)) {
                 isLoading = true
             }
             startLoadingSequence()
@@ -281,12 +281,12 @@ struct ContentView: View {
                     // Model güncellemesini tamamla
                     self.sudokuModel.finalizeNewGame()
                     
-                    startTimer()
-                    updateCompletedNumbers()
+                    self.startTimer()
+                    self.updateCompletedNumbers()
                     
                     // Yükleme ekranını kapat
-                    withAnimation {
-                        isLoading = false
+                    withAnimation(.easeOut(duration: 0.5)) {
+                        self.isLoading = false
                     }
                 }
             }
@@ -793,7 +793,7 @@ struct ContentView: View {
                     
                     // Kısa bir gecikme ile yükleme ekranını kapat (daha iyi kullanıcı deneyimi için)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        withAnimation(.easeOut(duration: 0.3)) {
+                        withAnimation(.easeOut(duration: 0.5)) {
                             self.isLoading = false
                         }
                     }
