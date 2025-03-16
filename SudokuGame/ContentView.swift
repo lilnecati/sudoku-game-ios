@@ -840,17 +840,34 @@ struct SudokuCellView: View {
                     .fill(backgroundColor)
                     .frame(width: cellSize, height: cellSize)
                 
-                // Sayı olan hücreler için özel arka plan
-                if value != nil {
+                // Sayı olan hücreler için özel arka plan - SADECE SEÇİLİ OLDUĞUNDA
+                if isSelected && value != nil {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(
+                            isDarkMode ? 
+                            (isEditable ? Color.gray.opacity(0.3) : Color.gray.opacity(0.4)) : 
+                            (isEditable ? Color.white : Color.white.opacity(0.95))
+                        )
+                        .shadow(
+                            color: themeColor.opacity(0.6),
+                            radius: 4,
+                            x: 0,
+                            y: 2
+                        )
+                        .frame(width: cellSize - 2, height: cellSize - 2)
+                }
+                
+                // Aynı sayılar için özel arka plan
+                else if isHighlightedNumber && value != nil {
                     RoundedRectangle(cornerRadius: 4)
                         .fill(
                             isDarkMode ? 
                             (isEditable ? Color.gray.opacity(0.2) : Color.gray.opacity(0.3)) : 
-                            (isEditable ? Color.white : Color.white.opacity(0.9))
+                            (isEditable ? Color.white.opacity(0.9) : Color.white.opacity(0.8))
                         )
                         .shadow(
-                            color: isHighlightedNumber ? themeColor.opacity(0.5) : Color.black.opacity(0.1),
-                            radius: isHighlightedNumber ? 3 : 1,
+                            color: themeColor.opacity(0.3),
+                            radius: 2,
                             x: 0,
                             y: 1
                         )
@@ -868,7 +885,7 @@ struct SudokuCellView: View {
                     lineWidth: isSelected ? 2 : 0.5
                 )
         )
-        .scaleEffect(isSelected ? 1.02 : 1.0)
+        .scaleEffect(isSelected ? 1.05 : 1.0)
         .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
     }
     
@@ -879,10 +896,10 @@ struct SudokuCellView: View {
             Text("\(value)")
                 .font(.system(size: fontSize, weight: isEditable ? .medium : .bold, design: .rounded))
                 .foregroundColor(textColor)
-                .opacity(isHighlightedNumber ? 1.0 : 0.9)
-                .shadow(color: isHighlightedNumber ? themeColor.opacity(0.5) : Color.clear, radius: 1)
-                .scaleEffect(isHighlightedNumber ? 1.1 : 1.0)
-                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isHighlightedNumber)
+                .opacity(isHighlightedNumber || isSelected ? 1.0 : 0.9)
+                .shadow(color: isSelected ? themeColor.opacity(0.7) : (isHighlightedNumber ? themeColor.opacity(0.3) : Color.clear), radius: isSelected ? 2 : 0.5)
+                .scaleEffect(isSelected ? 1.2 : (isHighlightedNumber ? 1.1 : 1.0))
+                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
         } else if !notes.isEmpty {
             // Notlar
             notesGrid
