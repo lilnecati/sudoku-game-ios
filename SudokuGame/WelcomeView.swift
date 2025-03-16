@@ -171,7 +171,7 @@ struct WelcomeView: View {
                         // Başlat düğmesi
                         Button(action: {
                             // Seçilen zorluğu UserDefaults'a kaydet
-                            UserDefaults.standard.set(selectedDifficulty.rawValue, forKey: "selectedDifficulty")
+                            UserDefaults.standard.set(selectedDifficulty.rawValue, forKey: "difficulty")
                             
                             // Oyun başlatma bildirimini gönder
                             NotificationCenter.default.post(name: NSNotification.Name("StartNewGame"), object: nil)
