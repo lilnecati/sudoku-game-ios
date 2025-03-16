@@ -877,7 +877,8 @@ struct SudokuCellView: View {
                         .foregroundColor(
                             number == selectedNumber ? 
                             (isDarkMode ? themeColor.opacity(0.9) : themeColor.opacity(0.8)) : 
-                            (isDarkMode ? .white.opacity(0.6) : .black.opacity(0.6))
+                            (isDarkMode ? Color.white.opacity(0.6) : Color.black.opacity(0.6))
+                        )
                         .frame(width: notesItemSize, height: notesItemSize)
                 } else {
                     Color.clear
