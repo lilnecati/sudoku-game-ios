@@ -54,12 +54,13 @@ struct ContentView: View {
     @AppStorage("selectedTheme") private var selectedThemeRaw: String = "Mavi"
     @State private var noteMode = false
     @State private var notes: [[[Int]]] = Array(repeating: Array(repeating: [], count: 9), count: 9)
-    @State private var showingWelcomeScreen = false
-    @State private var isLoading = false
+    @State private var showingWelcomeScreen = true // İlk açılışta hoş geldiniz ekranını göster
+    @State private var isLoading = true // Başlangıçta yükleme ekranını göster
     @Environment(\.colorScheme) var colorScheme
     @State private var showingGameCompleteAlert = false
     @AppStorage("userColorScheme") private var userColorSchemeRaw: String = "system"
     @State private var completedNumbers: Set<Int> = []
+    @AppStorage("firstLaunch") private var isFirstLaunch: Bool = true
     
     // Sabit değerler - performans için önceden hesaplanır
     private let buttonSize: CGFloat = UIScreen.main.bounds.width < 375 ? 40 : 45
@@ -170,6 +171,12 @@ struct ContentView: View {
                 showConfetti ? ConfettiView() : nil
             )
             .onAppear {
+                // İlk açılışta hoş geldiniz ekranını göster
+                if isFirstLaunch {
+                    showingWelcomeScreen = true
+                    isFirstLaunch = false
+                }
+                
                 // Uygulama başladığında yükleme ekranını göster
                 withAnimation {
                     isLoading = true
@@ -177,6 +184,9 @@ struct ContentView: View {
                 
                 // Uygulama başladığında otomatik kaydetmeyi başlat
                 sudokuModel.startAutoSave()
+                
+                // Sayacı sıfırla
+                sudokuModel.gameTime = 0
                 
                 // Yükleme ekranını gösterdikten sonra oyunu başlat
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
@@ -628,6 +638,9 @@ struct ContentView: View {
     private func startTimer() {
         // Önceki zamanlayıcıyı iptal et
         timer?.invalidate()
+        
+        // Sayacı sıfırla
+        sudokuModel.gameTime = 0
         
         // Yeni zamanlayıcı oluştur - 1 saniye aralıklarla
         timer = Timer(timeInterval: 1.0, repeats: true) { [self] _ in

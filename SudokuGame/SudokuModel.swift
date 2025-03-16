@@ -83,7 +83,8 @@ class SudokuModel: ObservableObject {
         }
         
         // Diğer oyun durumu verilerini yükle
-        self.gameTime = UserDefaults.standard.double(forKey: "gameTime")
+        // Oyun süresini 0'dan başlat
+        self.gameTime = 0
         self.mistakes = UserDefaults.standard.integer(forKey: "mistakes")
         self.isGameComplete = UserDefaults.standard.bool(forKey: "isGameComplete")
         
@@ -94,6 +95,9 @@ class SudokuModel: ObservableObject {
         // UserDefaults'tan zorluk seviyesini yükle
         let savedDifficulty = UserDefaults.standard.string(forKey: "difficulty") ?? Difficulty.orta.rawValue
         self.difficulty = Difficulty.allCases.first { $0.rawValue == savedDifficulty } ?? .orta
+        
+        // Oyun süresini sıfırla
+        self.gameTime = 0
         
         // Kaydedilmiş oyun durumunu yüklemeyi dene
         if !loadGameState() {
