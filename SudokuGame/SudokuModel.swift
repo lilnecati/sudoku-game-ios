@@ -322,4 +322,19 @@ class SudokuModel: ObservableObject {
         }
         return seen.count == 9
     }
+    
+    func enterNumber(_ number: Int, at row: Int, col: Int) {
+        // Hücre düzenlenebilir değilse işlem yapma
+        guard isCellEditable(at: row, col) else { return }
+        
+        // Geçerli bir hamle mi kontrol et
+        if isValidMove(number: number, at: row, col) {
+            grid[row][col] = number
+            checkGameCompletion()
+        } else {
+            // Geçersiz hamle
+            shake()
+            mistakes += 1
+        }
+    }
 } 

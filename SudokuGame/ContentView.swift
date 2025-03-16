@@ -464,7 +464,7 @@ struct ContentView: View {
                     .frame(width: buttonSize, height: buttonSize)
                 
                 Text("\(number)")
-                    .font(.system(size: fontSize * 0.8, weight: .medium))
+                    .font(.system(size: 20, weight: .medium))
                     .foregroundColor(isDarkMode ? .white : .black)
             }
         }
@@ -730,7 +730,7 @@ struct SudokuCellView: View {
     
     var body: some View {
         Button(action: {
-            sudokuModel.selectedCell = (row: row, col: col)
+            sudokuModel.selectedCell = (row: self.row, col: self.col)
             
             // Haptic feedback - sadece iOS cihazlarda
             #if os(iOS)
