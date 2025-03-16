@@ -342,7 +342,7 @@ struct ContentView: View {
                                 } else if sudokuModel.grid[selected.row][selected.col] != nil {
                                     // Normal modda hücreyi temizle
                                     withAnimation {
-                                        sudokuModel.clearCell(at: selected.row, selected.col)
+                                        sudokuModel.clearCell(at: selected.row, col: selected.col)
                                     }
                                 }
                             }
@@ -466,8 +466,8 @@ struct ContentView: View {
             
             for row in 0..<9 {
                 for col in 0..<9 {
-                    if sudokuModel.grid[row][col] == nil && sudokuModel.isCellEditable(at: row, col) {
-                        if let correctNumber = sudokuModel.getCorrectNumber(at: row, col) {
+                    if sudokuModel.grid[row][col] == nil && sudokuModel.isCellEditable(at: row, col: col) {
+                        if let correctNumber = sudokuModel.getCorrectNumber(at: row, col: col) {
                             hints.append((row: row, col: col, num: correctNumber))
                         }
                     }
@@ -490,11 +490,11 @@ struct ContentView: View {
             return "Bu hücre zaten dolu. Başka bir hücre seçin."
         }
         
-        if !sudokuModel.isCellEditable(at: row, col) {
+        if !sudokuModel.isCellEditable(at: row, col: col) {
             return "Bu hücre değiştirilemez. Başka bir hücre seçin."
         }
         
-        if let correctNumber = sudokuModel.getCorrectNumber(at: row, col) {
+        if let correctNumber = sudokuModel.getCorrectNumber(at: row, col: col) {
             return "Seçili hücreye \(correctNumber) sayısını yerleştirebilirsiniz."
         }
         
@@ -604,7 +604,7 @@ struct SudokuCellView: View {
     }
     
     private var isEditable: Bool {
-        sudokuModel.isCellEditable(at: row, col)
+        sudokuModel.isCellEditable(at: row, col: col)
     }
     
     private var backgroundColor: Color {
