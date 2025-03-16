@@ -97,7 +97,7 @@ Uygulama MVVM (Model-View-ViewModel) mimarisi kullanılarak geliştirilmiştir:
 
 ## İletişim
 
-Necati Yıldırım - 
+Necati Yıldırım  
 
 Proje Bağlantısı: 
 
