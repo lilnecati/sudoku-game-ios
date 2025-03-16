@@ -1,5 +1,33 @@
 import SwiftUI
 
+// Uygulama yaşam döngüsü olaylarını dinlemek için
+class AppLifecycleManager: ObservableObject {
+    @Published var isActive = true
+    
+    init() {
+        // Uygulama arka plana geçtiğinde
+        NotificationCenter.default.addObserver(self, selector: #selector(appDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        
+        // Uygulama ön plana geldiğinde
+        NotificationCenter.default.addObserver(self, selector: #selector(appWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+    }
+    
+    @objc func appDidEnterBackground() {
+        isActive = false
+    }
+    
+    @objc func appWillEnterForeground() {
+        isActive = true
+        
+        // Uygulama ön plana geldiğinde yeni oyun başlatma bildirimi gönder
+        NotificationCenter.default.post(name: NSNotification.Name("AppBecameActive"), object: nil)
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+}
+
 // Tema renkleri için enum tanımı
 enum ThemeColor: String, CaseIterable, Identifiable {
     case blue = "Mavi"
@@ -43,6 +71,7 @@ enum ThemeColor: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
     @StateObject private var sudokuModel = SudokuModel()
+    @StateObject private var lifecycleManager = AppLifecycleManager()
     @State private var showingHowToPlay = false
     @State private var showingSettings = false
     @State private var selectedNumber: Int? = nil
@@ -188,39 +217,79 @@ struct ContentView: View {
                 // Sayacı sıfırla
                 sudokuModel.gameTime = 0
                 
+                // NotificationCenter dinleyicisi ekle
+                setupNotificationObservers()
+                
                 // Yükleme ekranını gösterdikten sonra oyunu başlat
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                    // Yeni oyun oluşturma işlemini arka planda yap
-                    DispatchQueue.global(qos: .userInitiated).async {
-                        // Sudoku çözümünü oluştur (en yoğun işlem)
-                        autoreleasepool {
-                            self.sudokuModel.prepareNewGame()
-                        }
-                        
-                        // UI güncellemelerini ana thread'de yap
-                        DispatchQueue.main.async {
-                            // Model güncellemesini tamamla
-                            self.sudokuModel.finalizeNewGame()
-                            
-                            startTimer()
-                            updateCompletedNumbers()
-                            
-                            // Yükleme ekranını kapat
-                            withAnimation {
-                                isLoading = false
-                            }
-                        }
-                    }
-                }
+                startLoadingSequence()
             }
             .onDisappear {
                 // Görünüm kaybolduğunda timer'ı durdur
                 stopTimer()
+                
+                // NotificationCenter dinleyicisini kaldır
+                NotificationCenter.default.removeObserver(self)
             }
             .fullScreenCover(isPresented: $showingWelcomeScreen) {
                 WelcomeView()
             }
             .preferredColorScheme(userColorScheme)
+        }
+    }
+    
+    // MARK: - Notification Observers
+    
+    private func setupNotificationObservers() {
+        // Yeni oyun başlatma bildirimi için dinleyici ekle
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("StartNewGame"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            // Yeni oyun başlat
+            startNewGame()
+        }
+        
+        // Uygulama ön plana geldiğinde yükleme ekranını göster
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("AppBecameActive"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            // Yükleme ekranını göster ve yeni oyun başlat
+            withAnimation {
+                isLoading = true
+            }
+            startLoadingSequence()
+        }
+    }
+    
+    // MARK: - Loading Sequence
+    
+    private func startLoadingSequence() {
+        // Yükleme ekranını gösterdikten sonra oyunu başlat
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            // Yeni oyun oluşturma işlemini arka planda yap
+            DispatchQueue.global(qos: .userInitiated).async {
+                // Sudoku çözümünü oluştur (en yoğun işlem)
+                autoreleasepool {
+                    self.sudokuModel.prepareNewGame()
+                }
+                
+                // UI güncellemelerini ana thread'de yap
+                DispatchQueue.main.async {
+                    // Model güncellemesini tamamla
+                    self.sudokuModel.finalizeNewGame()
+                    
+                    startTimer()
+                    updateCompletedNumbers()
+                    
+                    // Yükleme ekranını kapat
+                    withAnimation {
+                        isLoading = false
+                    }
+                }
+            }
         }
     }
     
@@ -692,6 +761,7 @@ struct ContentView: View {
     
     // Yeni oyun başlatma fonksiyonu
     private func startNewGame() {
+        // Önce yükleme ekranını göster
         withAnimation(.easeIn(duration: 0.3)) {
             isLoading = true
         }

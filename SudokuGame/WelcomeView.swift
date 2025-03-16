@@ -172,9 +172,14 @@ struct WelcomeView: View {
                             UserDefaults.standard.set(selectedDifficulty.rawValue, forKey: "difficulty")
                             UserDefaults.standard.synchronize()
                             
-                            // Ekranı kapat
+                            // Ekranı kapat ve ContentView'a dön
                             isGameStarted = true
+                            
+                            // Presentation modu kapat
                             dismiss()
+                            
+                            // Yeni oyun başlat
+                            NotificationCenter.default.post(name: NSNotification.Name("StartNewGame"), object: nil)
                         }) {
                             HStack {
                                 Image(systemName: "play.fill")
