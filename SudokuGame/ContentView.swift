@@ -143,8 +143,8 @@ struct ContentView: View {
             ZStack {
                 // Arka plan rengi - koyu/beyaz moda göre değişir
                 (colorScheme == .dark ? 
-                    LinearGradient(gradient: Gradient(colors: [Color.black, Color.purple.opacity(0.2)]), startPoint: .top, endPoint: .bottom) :
-                    LinearGradient(gradient: Gradient(colors: [Color.white, Color.blue.opacity(0.1)]), startPoint: .top, endPoint: .bottom))
+                    LinearGradient(gradient: Gradient(colors: [Color.black, themeColor.opacity(0.2)]), startPoint: .top, endPoint: .bottom) :
+                    LinearGradient(gradient: Gradient(colors: [Color.white, themeColor.opacity(0.1)]), startPoint: .top, endPoint: .bottom))
                     .ignoresSafeArea()
                 
                 VStack(spacing: 10) {
@@ -169,18 +169,18 @@ struct ContentView: View {
                             
                             HStack {
                                 Image(systemName: "clock.fill")
-                                    .foregroundColor(colorScheme == .dark ? .cyan : .blue)
-                                    .shadow(color: colorScheme == .dark ? .cyan.opacity(0.3) : .blue.opacity(0.3), radius: 2, x: 0, y: 1)
+                                    .foregroundColor(colorScheme == .dark ? themeSecondaryColor : themeColor)
+                                    .shadow(color: colorScheme == .dark ? themeSecondaryColor.opacity(0.3) : themeColor.opacity(0.3), radius: 2, x: 0, y: 1)
                                 Text("Süre: \(formatTime(sudokuModel.gameTime))")
-                                    .foregroundColor(colorScheme == .dark ? .cyan : .blue)
+                                    .foregroundColor(colorScheme == .dark ? themeSecondaryColor : themeColor)
                                     .fontWeight(.semibold)
                             }
                             .padding(.vertical, 4)
                             .padding(.horizontal, 8)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill(colorScheme == .dark ? Color.blue.opacity(0.1) : Color.blue.opacity(0.05))
-                                    .shadow(color: colorScheme == .dark ? Color.cyan.opacity(0.1) : Color.blue.opacity(0.1), radius: 2, x: 0, y: 1)
+                                    .fill(colorScheme == .dark ? themeColor.opacity(0.1) : themeColor.opacity(0.05))
+                                    .shadow(color: colorScheme == .dark ? themeSecondaryColor.opacity(0.1) : themeColor.opacity(0.1), radius: 2, x: 0, y: 1)
                             )
                         }
                         
@@ -201,12 +201,12 @@ struct ContentView: View {
                             }) {
                                 Image(systemName: "arrow.clockwise")
                                     .font(.system(size: 18))
-                                    .foregroundColor(colorScheme == .dark ? .purple : .blue)
+                                    .foregroundColor(themeColor)
                                     .frame(width: 36, height: 36)
                                     .background(
                                         Circle()
-                                            .fill(colorScheme == .dark ? Color.purple.opacity(0.2) : Color.blue.opacity(0.1))
-                                            .shadow(color: colorScheme == .dark ? Color.purple.opacity(0.3) : Color.blue.opacity(0.2), radius: 2, x: 0, y: 1)
+                                            .fill(themeColor.opacity(0.2))
+                                            .shadow(color: themeColor.opacity(0.3), radius: 2, x: 0, y: 1)
                                     )
                             }
                             
@@ -223,8 +223,8 @@ struct ContentView: View {
                                 .padding(.horizontal, 8)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(colorScheme == .dark ? Color.purple.opacity(0.3) : Color.blue.opacity(0.2))
-                                        .shadow(color: colorScheme == .dark ? Color.purple.opacity(0.3) : Color.blue.opacity(0.2), radius: 3, x: 0, y: 2)
+                                        .fill(colorScheme == .dark ? themeColor.opacity(0.3) : themeColor.opacity(0.2))
+                                        .shadow(color: colorScheme == .dark ? themeColor.opacity(0.3) : themeColor.opacity(0.2), radius: 3, x: 0, y: 2)
                                 )
                             }
                             
@@ -233,12 +233,12 @@ struct ContentView: View {
                             }) {
                                 Image(systemName: "chart.bar.fill")
                                     .font(.system(size: 18))
-                                    .foregroundColor(colorScheme == .dark ? .purple : .blue)
+                                    .foregroundColor(themeColor)
                                     .frame(width: 36, height: 36)
                                     .background(
                                         Circle()
-                                            .fill(colorScheme == .dark ? Color.purple.opacity(0.2) : Color.blue.opacity(0.1))
-                                            .shadow(color: colorScheme == .dark ? Color.purple.opacity(0.3) : Color.blue.opacity(0.2), radius: 2, x: 0, y: 1)
+                                            .fill(themeColor.opacity(0.2))
+                                            .shadow(color: themeColor.opacity(0.3), radius: 2, x: 0, y: 1)
                                     )
                             }
                             
@@ -247,12 +247,12 @@ struct ContentView: View {
                             }) {
                                 Image(systemName: "questionmark.circle.fill")
                                     .font(.system(size: 18))
-                                    .foregroundColor(colorScheme == .dark ? .purple : .blue)
+                                    .foregroundColor(themeColor)
                                     .frame(width: 36, height: 36)
                                     .background(
                                         Circle()
-                                            .fill(colorScheme == .dark ? Color.purple.opacity(0.2) : Color.blue.opacity(0.1))
-                                            .shadow(color: colorScheme == .dark ? Color.purple.opacity(0.3) : Color.blue.opacity(0.2), radius: 2, x: 0, y: 1)
+                                            .fill(themeColor.opacity(0.2))
+                                            .shadow(color: themeColor.opacity(0.3), radius: 2, x: 0, y: 1)
                                     )
                             }
                             
@@ -293,7 +293,7 @@ struct ContentView: View {
                     .padding(.horizontal)
                     
                     // Sudoku grid
-                    SudokuGridView(sudokuModel: sudokuModel, colorScheme: colorScheme)
+                    SudokuGridView(sudokuModel: sudokuModel, colorScheme: colorScheme, themeColor: themeColor, themeSecondaryColor: themeSecondaryColor)
                         .padding(.horizontal, 5)
                         .rotation3DEffect(
                             Angle(degrees: animateNewGame ? 360 : 0),
@@ -303,7 +303,7 @@ struct ContentView: View {
                         .modifier(ShakeEffect(shaking: sudokuModel.shakeGrid))
                     
                     // Rakam tuşları
-                    NumberPadView(sudokuModel: sudokuModel, colorScheme: colorScheme)
+                    NumberPadView(sudokuModel: sudokuModel, colorScheme: colorScheme, themeColor: themeColor, themeSecondaryColor: themeSecondaryColor)
                         .padding(.horizontal)
                 }
                 .navigationTitle("Sudoku")
@@ -312,7 +312,7 @@ struct ContentView: View {
                     ToolbarItem(placement: .principal) {
                         Text("Sudoku")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white : .blue)
+                            .foregroundColor(colorScheme == .dark ? .white : themeColor)
                     }
                 }
                 .alert("Tebrikler!", isPresented: .constant(sudokuModel.isGameComplete)) {
@@ -469,6 +469,15 @@ struct ContentView: View {
             }
         }
     }
+    
+    // Tema rengini döndüren yardımcı fonksiyon
+    var themeColor: Color {
+        colorScheme == .dark ? selectedTheme.mainColor : selectedTheme.mainColor
+    }
+    
+    var themeSecondaryColor: Color {
+        colorScheme == .dark ? selectedTheme.secondaryColor : selectedTheme.secondaryColor
+    }
 }
 
 struct ShakeEffect: GeometryEffect {
@@ -491,6 +500,8 @@ struct ShakeEffect: GeometryEffect {
 struct SudokuGridView: View {
     @ObservedObject var sudokuModel: SudokuModel
     let colorScheme: ColorScheme
+    let themeColor: Color
+    let themeSecondaryColor: Color
     
     let gridSpacing: CGFloat = 1
     let boldSpacing: CGFloat = 2
@@ -521,8 +532,8 @@ struct SudokuGridView: View {
                 .stroke(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            colorScheme == .dark ? Color.purple.opacity(0.7) : Color.blue.opacity(0.5),
-                            colorScheme == .dark ? Color.purple.opacity(0.3) : Color.blue.opacity(0.2)
+                            colorScheme == .dark ? themeColor.opacity(0.7) : themeColor.opacity(0.5),
+                            colorScheme == .dark ? themeColor.opacity(0.3) : themeColor.opacity(0.2)
                         ]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -598,16 +609,16 @@ struct SudokuGridView: View {
             if isSelected {
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        colorScheme == .dark ? Color.purple.opacity(0.6) : Color.blue.opacity(0.5),
-                        colorScheme == .dark ? Color.purple.opacity(0.4) : Color.blue.opacity(0.3)
+                        colorScheme == .dark ? themeColor.opacity(0.6) : themeColor.opacity(0.5),
+                        colorScheme == .dark ? themeColor.opacity(0.4) : themeColor.opacity(0.3)
                     ]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
             } else if isInSameRowOrCol {
-                colorScheme == .dark ? Color.purple.opacity(0.15) : Color.blue.opacity(0.15)
+                colorScheme == .dark ? themeColor.opacity(0.15) : themeColor.opacity(0.15)
             } else if isInSameBlock {
-                colorScheme == .dark ? Color.purple.opacity(0.1) : Color.blue.opacity(0.1)
+                colorScheme == .dark ? themeColor.opacity(0.1) : themeColor.opacity(0.1)
             } else {
                 colorScheme == .dark ? Color(UIColor.systemGray4) : Color.white
             }
@@ -618,7 +629,7 @@ struct SudokuGridView: View {
         RoundedRectangle(cornerRadius: 10)
             .stroke(
                 isSelected ? 
-                    (colorScheme == .dark ? Color.purple : Color.blue) : 
+                    (colorScheme == .dark ? themeColor : themeColor) : 
                     Color.gray.opacity(0.3),
                 lineWidth: isSelected ? 2.5 : 0.5
             )
@@ -626,20 +637,22 @@ struct SudokuGridView: View {
     
     private func shadowColor(isSelected: Bool) -> Color {
         isSelected ? 
-            (colorScheme == .dark ? Color.purple.opacity(0.5) : Color.blue.opacity(0.3)) : 
+            (colorScheme == .dark ? themeColor.opacity(0.5) : themeColor.opacity(0.3)) : 
             Color.clear
     }
     
     private func textColor(isInitialValue: Bool) -> Color {
         isInitialValue ? 
             (colorScheme == .dark ? Color.gray : Color.black) : 
-            (colorScheme == .dark ? Color.white : Color.blue)
+            (colorScheme == .dark ? Color.white : themeColor)
     }
 }
 
 struct NumberPadView: View {
     @ObservedObject var sudokuModel: SudokuModel
     let colorScheme: ColorScheme
+    let themeColor: Color
+    let themeSecondaryColor: Color
     @State private var pressedNumber: Int? = nil
     @State private var animateSuccess = false
     
@@ -686,8 +699,8 @@ struct NumberPadView: View {
                                         .fill(
                                             LinearGradient(
                                                 gradient: Gradient(colors: [
-                                                    colorScheme == .dark ? Color.purple.opacity(0.5) : Color.blue.opacity(0.4),
-                                                    colorScheme == .dark ? Color.purple.opacity(0.3) : Color.blue.opacity(0.2)
+                                                    colorScheme == .dark ? themeColor.opacity(0.5) : themeColor.opacity(0.4),
+                                                    colorScheme == .dark ? themeColor.opacity(0.3) : themeColor.opacity(0.2)
                                                 ]),
                                                 startPoint: .topLeading,
                                                 endPoint: .bottomTrailing
@@ -708,7 +721,7 @@ struct NumberPadView: View {
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
                                     .stroke(
-                                        colorScheme == .dark ? Color.purple.opacity(0.7) : Color.blue.opacity(0.5),
+                                        colorScheme == .dark ? themeColor.opacity(0.7) : themeColor.opacity(0.5),
                                         lineWidth: 1
                                     )
                             )
@@ -1525,5 +1538,120 @@ class SudokuModel: ObservableObject {
         
         // Tüm hücreler dolu ise oyun tamamlandı
         isGameComplete = true
+    }
+}
+
+// Tema seçici görünümü
+struct ThemePickerView: View {
+    @Binding var selectedTheme: ContentView.ColorTheme
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.presentationMode) var presentationMode
+    @State private var dragOffset: CGFloat = 0
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                (colorScheme == .dark ? Color.black : Color.white).ignoresSafeArea()
+                
+                VStack(spacing: 20) {
+                    Text("Tema Seçin")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .padding(.top, 20)
+                    
+                    ScrollView {
+                        VStack(spacing: 15) {
+                            ForEach(ContentView.ColorTheme.allCases) { theme in
+                                Button(action: {
+                                    withAnimation {
+                                        selectedTheme = theme
+                                    }
+                                    
+                                    // Haptic feedback
+                                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                                    generator.impactOccurred()
+                                    
+                                    // Kısa bir gecikme ile kapat
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                        presentationMode.wrappedValue.dismiss()
+                                    }
+                                }) {
+                                    HStack {
+                                        Circle()
+                                            .fill(theme.mainColor)
+                                            .frame(width: 30, height: 30)
+                                        
+                                        Image(systemName: theme.icon)
+                                            .foregroundColor(theme.mainColor)
+                                            .font(.title3)
+                                            .padding(.leading, 5)
+                                        
+                                        Text(theme.rawValue)
+                                            .font(.title3)
+                                            .padding(.leading, 10)
+                                            .foregroundColor(colorScheme == .dark ? .white : .primary)
+                                        
+                                        Spacer()
+                                        
+                                        if selectedTheme == theme {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(theme.mainColor)
+                                        }
+                                    }
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(colorScheme == .dark ? 
+                                                  (selectedTheme == theme ? theme.mainColor.opacity(0.3) : Color.gray.opacity(0.2)) : 
+                                                  (selectedTheme == theme ? theme.mainColor.opacity(0.2) : Color.gray.opacity(0.1)))
+                                            .shadow(color: colorScheme == .dark ? theme.mainColor.opacity(0.3) : theme.mainColor.opacity(0.2), radius: 3, x: 0, y: 2)
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    
+                    Spacer()
+                    
+                    // Kaydırma ipucu
+                    HStack {
+                        Image(systemName: "arrow.right")
+                        Text("Kapatmak için sağa kaydırın")
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .padding(.bottom, 20)
+                }
+                .offset(x: dragOffset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            if value.translation.width > 0 {
+                                dragOffset = value.translation.width
+                            }
+                        }
+                        .onEnded { value in
+                            if value.translation.width > 100 {
+                                presentationMode.wrappedValue.dismiss()
+                            } else {
+                                withAnimation {
+                                    dragOffset = 0
+                                }
+                            }
+                        }
+                )
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Kapat") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .foregroundColor(selectedTheme.mainColor)
+                }
+            }
+        }
     }
 }
