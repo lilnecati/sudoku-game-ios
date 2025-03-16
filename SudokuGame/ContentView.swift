@@ -51,7 +51,7 @@ struct ContentView: View {
     @State private var showConfetti = false
     @State private var showingStats = false
     @State private var showingHint = false
-    @AppStorage("selectedTheme") private var selectedThemeRaw: String = "blue"
+    @AppStorage("selectedTheme") private var selectedThemeRaw: String = "Mavi"
     @State private var noteMode = false
     @State private var notes: [[[Int]]] = Array(repeating: Array(repeating: [], count: 9), count: 9)
     @State private var showingWelcomeScreen = false
@@ -67,29 +67,14 @@ struct ContentView: View {
     private let numberButtonFontSize: CGFloat = UIScreen.main.bounds.width < 375 ? 20 : 22
     
     private var selectedTheme: ThemeColor {
-        get {
-            ThemeColor.allCases.first { $0.rawValue == selectedThemeRaw } ?? .blue
-        }
-        set {
-            selectedThemeRaw = newValue.rawValue
-        }
+        ThemeColor(rawValue: selectedThemeRaw) ?? .blue
     }
     
     private var userColorScheme: ColorScheme? {
-        get {
-            switch userColorSchemeRaw {
-            case "light": return .light
-            case "dark": return .dark
-            default: return nil
-            }
-        }
-        set {
-            switch newValue {
-            case .light: userColorSchemeRaw = "light"
-            case .dark: userColorSchemeRaw = "dark"
-            case .none: userColorSchemeRaw = "system"
-            @unknown default: userColorSchemeRaw = "system"
-            }
+        switch userColorSchemeRaw {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
         }
     }
     
@@ -140,7 +125,20 @@ struct ContentView: View {
                 HowToPlayView()
             }
             .sheet(isPresented: $showingSettings) {
-                SettingsView(isPresented: $showingSettings, themeColor: $selectedTheme, sudokuModel: sudokuModel, userColorScheme: $userColorScheme)
+                SettingsView(isPresented: $showingSettings, themeColor: Binding(
+                    get: { self.selectedTheme },
+                    set: { self.selectedThemeRaw = $0.rawValue }
+                ), sudokuModel: sudokuModel, userColorScheme: Binding(
+                    get: { self.userColorScheme },
+                    set: { 
+                        switch $0 {
+                        case .light: self.userColorSchemeRaw = "light"
+                        case .dark: self.userColorSchemeRaw = "dark"
+                        case .none: self.userColorSchemeRaw = "system"
+                        @unknown default: self.userColorSchemeRaw = "system"
+                        }
+                    }
+                ))
             }
             .sheet(isPresented: $showingDifficultyPicker) {
                 DifficultyPickerView(difficulty: $sudokuModel.difficulty, themeColor: themeColor)
