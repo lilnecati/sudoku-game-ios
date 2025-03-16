@@ -305,13 +305,14 @@ struct ContentView: View {
                 .padding(.vertical, 10)
                 .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
-                        .shadow(color: themeColor.opacity(0.3), radius: 3, x: 0, y: 2)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(themeColor.opacity(0.3), lineWidth: 1.5)
-                        )
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
+                            .shadow(color: themeColor.opacity(0.3), radius: 3, x: 0, y: 2)
+                        
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(themeColor.opacity(0.3), lineWidth: 1.5)
+                    }
                 )
             }
             
@@ -326,13 +327,14 @@ struct ContentView: View {
             .padding(.vertical, 10)
             .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
-                    .shadow(color: Color.red.opacity(0.3), radius: 3, x: 0, y: 2)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.red.opacity(0.3), lineWidth: 1.5)
-                    )
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
+                        .shadow(color: Color.red.opacity(0.3), radius: 3, x: 0, y: 2)
+                    
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.red.opacity(0.3), lineWidth: 1.5)
+                }
             )
             
             // Zorluk seviyesi
@@ -351,13 +353,14 @@ struct ContentView: View {
                 .padding(.vertical, 10)
                 .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
                 .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
-                        .shadow(color: themeSecondaryColor.opacity(0.3), radius: 3, x: 0, y: 2)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(themeSecondaryColor.opacity(0.3), lineWidth: 1.5)
-                        )
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
+                            .shadow(color: themeSecondaryColor.opacity(0.3), radius: 3, x: 0, y: 2)
+                        
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(themeSecondaryColor.opacity(0.3), lineWidth: 1.5)
+                    }
                 )
             }
         }
@@ -520,22 +523,8 @@ struct ContentView: View {
                 }
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
-                .shadow(color: isDarkMode ? Color.black.opacity(0.5) : Color.gray.opacity(0.3), radius: 15, x: 0, y: 8)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(
-                    LinearGradient(
-                        gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 3
-                )
-        )
+        .background(gridBackground)
+        .overlay(gridOverlay)
         .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 5 : 2)
         .scaleEffect(sudokuModel.shakeGrid ? 0.95 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: sudokuModel.shakeGrid)
@@ -551,12 +540,31 @@ struct ContentView: View {
             anchorZ: 0,
             perspective: 0.3
         )
-        .animation(
-            sudokuModel.isGameComplete ?
-            .spring(response: 0.6, dampingFraction: 0.6).delay(0.1) :
-            .spring(response: 0.3, dampingFraction: 0.6),
-            value: sudokuModel.isGameComplete
-        )
+        .animation(gridCompletionAnimation, value: sudokuModel.isGameComplete)
+    }
+    
+    private var gridBackground: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
+            .shadow(color: isDarkMode ? Color.black.opacity(0.5) : Color.gray.opacity(0.3), radius: 15, x: 0, y: 8)
+    }
+    
+    private var gridOverlay: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .stroke(
+                LinearGradient(
+                    gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 3
+            )
+    }
+    
+    private var gridCompletionAnimation: Animation {
+        sudokuModel.isGameComplete ?
+        .spring(response: 0.6, dampingFraction: 0.6).delay(0.1) :
+        .spring(response: 0.3, dampingFraction: 0.6)
     }
     
     private var numberPickerView: some View {
@@ -568,23 +576,8 @@ struct ContentView: View {
                     Text("\(number)")
                         .font(.system(size: UIScreen.main.bounds.width >= 390 ? 28 : 24, weight: .bold))
                         .frame(width: numberButtonSize, height: numberButtonSize)
-                        .background(
-                            selectedNumber == number ?
-                            LinearGradient(
-                                gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 10)) :
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(themeColor.opacity(0.3), lineWidth: 1)
-                        )
+                        .background(numberButtonBackground(for: number))
                         .foregroundColor(selectedNumber == number ? .white : (isDarkMode ? .white : .black))
-                        .shadow(color: selectedNumber == number ? themeColor.opacity(0.5) : Color.gray.opacity(0.2), radius: 3, x: 0, y: 2)
                         .scaleEffect(selectedNumber == number ? 1.05 : 1.0)
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -592,6 +585,27 @@ struct ContentView: View {
         }
         .padding(.horizontal, horizontalPadding)
         .padding(.vertical, 10)
+    }
+    
+    private func numberButtonBackground(for number: Int) -> some View {
+        ZStack {
+            if selectedNumber == number {
+                LinearGradient(
+                    gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .shadow(color: themeColor.opacity(0.5), radius: 3, x: 0, y: 2)
+            } else {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
+                    .shadow(color: Color.gray.opacity(0.2), radius: 3, x: 0, y: 2)
+            }
+            
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(themeColor.opacity(0.3), lineWidth: 1)
+        }
     }
     
     private var deleteButton: some View {
