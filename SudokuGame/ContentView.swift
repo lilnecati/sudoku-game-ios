@@ -571,12 +571,11 @@ struct ContentView: View {
         timer?.invalidate()
         
         // Yeni zamanlayıcı oluştur - 1 saniye aralıklarla
-        timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
+        timer = Timer(timeInterval: 1.0, repeats: true) { [self] _ in
             // SudokuModel'deki timer'ı durdur, çünkü orada da bir timer çalışıyor
-            self.sudokuModel.stopTimer()
+            sudokuModel.stopTimer()
             // Sadece buradaki timer'ı kullan
-            self.sudokuModel.gameTime += 1
+            sudokuModel.gameTime += 1
         }
         // Ana thread'de çalıştır ve daha doğru zamanlama için common modunu kullan
         RunLoop.main.add(timer!, forMode: .common)
