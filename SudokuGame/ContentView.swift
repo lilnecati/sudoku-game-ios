@@ -1272,6 +1272,19 @@ struct LoadingView: View {
     @State private var scaleEffect = 1.0
     @State private var opacity = 0.7
     @State private var progressValue = 0.0
+    @State private var tipIndex = 0
+    
+    // Yükleme ekranında gösterilecek ipuçları
+    private let tips = [
+        "Önce kolay olan hücreleri doldurun",
+        "Eleme yöntemini kullanarak ilerleyin",
+        "Not alma özelliğini kullanın",
+        "Aynı satır ve sütunda aynı sayı olamaz",
+        "Her 3x3 kutuda 1-9 arası sayılar birer kez olmalı",
+        "Zorlandığınızda ipucu alabilirsiniz",
+        "Tema rengini ayarlardan değiştirebilirsiniz",
+        "Açık/koyu mod arasında geçiş yapabilirsiniz"
+    ]
     
     var body: some View {
         ZStack {
@@ -1281,9 +1294,9 @@ struct LoadingView: View {
                       Color.black.opacity(0.8) : 
                       Color.white.opacity(0.9))
                 .shadow(color: themeColor.opacity(0.3), radius: 15, x: 0, y: 5)
-                .frame(width: 280, height: 200)
+                .frame(width: 300, height: 250)
             
-            VStack(spacing: 25) {
+            VStack(spacing: 20) {
                 Text("Sudoku Hazırlanıyor...")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundColor(isDarkMode ? .white : themeColor)
@@ -1339,6 +1352,16 @@ struct LoadingView: View {
                     .scaleEffect(0.8)
                 }
                 
+                // İpucu metni
+                Text(tips[tipIndex])
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(isDarkMode ? .white.opacity(0.9) : .black.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .frame(height: 40)
+                    .frame(width: 250)
+                    .transition(.opacity)
+                    .id("tip-\(tipIndex)") // Animasyon için benzersiz ID
+                
                 // İlerleme göstergesi
                 ProgressView(value: progressValue, total: 1.0)
                     .progressViewStyle(LinearProgressViewStyle(tint: themeColor))
@@ -1365,10 +1388,22 @@ struct LoadingView: View {
                     progressValue = 1.0
                 }
                 
+                // İpuçlarını değiştir
+                startTipTimer()
+                
                 isAnimating = true
             }
         }
         .drawingGroup() // Metal hızlandırma için
+    }
+    
+    // İpuçlarını değiştiren zamanlayıcı
+    private func startTipTimer() {
+        Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { timer in
+            withAnimation(.easeInOut(duration: 0.5)) {
+                tipIndex = (tipIndex + 1) % tips.count
+            }
+        }
     }
 }
 
