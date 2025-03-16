@@ -26,7 +26,7 @@ struct WelcomeView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 // Geliştirilmiş arka plan gradyanı
                 LinearGradient(gradient: Gradient(colors: colorScheme == .dark ? 
@@ -166,11 +166,7 @@ struct WelcomeView: View {
                         .padding(.horizontal)
                         
                         // Oyuna başla butonu
-                        Button(action: {
-                            withAnimation {
-                                isGameStarted = true
-                            }
-                        }) {
+                        NavigationLink(destination: ContentView().navigationBarBackButtonHidden()) {
                             HStack {
                                 Image(systemName: "play.fill")
                                     .font(.headline)
@@ -194,10 +190,6 @@ struct WelcomeView: View {
                         .padding(.horizontal, 30)
                         .offset(y: buttonOffset)
                         .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2), value: buttonOffset)
-                        .navigationDestination(isPresented: $isGameStarted) {
-                            ContentView()
-                                .navigationBarBackButtonHidden()
-                        }
                     }
                     .opacity(contentOpacity)
                     .animation(.easeIn(duration: 0.8).delay(0.5), value: contentOpacity)
