@@ -424,7 +424,6 @@ struct ContentView: View {
                             .foregroundColor(.white)
                             .shadow(color: Color.red.opacity(0.3), radius: 2, x: 0, y: 1)
                         }
-                        .padding(.bottom, UIScreen.main.bounds.width >= 390 ? 15 : 10)
                     }
                 }
             }
