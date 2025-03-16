@@ -77,7 +77,7 @@ struct ContentView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 // Geliştirilmiş arka plan
                 backgroundView
@@ -154,7 +154,6 @@ struct ContentView: View {
                 WelcomeView()
             }
         }
-        .navigationViewStyle(StackNavigationViewStyle())
     }
     
     // MARK: - Alt görünümler
@@ -845,7 +844,7 @@ struct DifficultyPickerView: View {
     @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 ForEach(SudokuModel.Difficulty.allCases, id: \.self) { level in
                     Button(action: {
@@ -869,9 +868,14 @@ struct DifficultyPickerView: View {
                 }
             }
             .navigationTitle("Zorluk Seviyesi")
-            .navigationBarItems(trailing: Button("Kapat") {
-                presentationMode.wrappedValue.dismiss()
-            })
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Kapat") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
         }
     }
 }
@@ -884,7 +888,7 @@ struct StatsView: View {
     @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section(header: Text("Oyun İstatistikleri")) {
                     HStack {
@@ -927,9 +931,14 @@ struct StatsView: View {
                 }
             }
             .navigationTitle("İstatistikler")
-            .navigationBarItems(trailing: Button("Kapat") {
-                presentationMode.wrappedValue.dismiss()
-            })
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Kapat") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
         }
     }
     
