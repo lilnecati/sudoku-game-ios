@@ -198,6 +198,27 @@ struct ContentView: View {
                         )
                     }
                     
+                    // Geri alma butonu
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            sudokuModel.undoLastMove()
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "arrow.uturn.backward")
+                            Text("Geri Al")
+                        }
+                        .foregroundColor(.white)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(sudokuModel.canUndo ? themeColor : Color.gray)
+                                .shadow(color: sudokuModel.canUndo ? themeColor.opacity(0.4) : Color.gray.opacity(0.4), radius: 2, x: 0, y: 2)
+                        )
+                    }
+                    .disabled(!sudokuModel.canUndo)
+                    
                     // İpucu butonu
                     Button(action: {
                         showHint()
@@ -215,7 +236,10 @@ struct ContentView: View {
                                 .shadow(color: themeSecondaryColor.opacity(0.4), radius: 2, x: 0, y: 2)
                         )
                     }
-                    
+                }
+                .padding(.horizontal)
+                
+                HStack(spacing: 15) {
                     // Not modu butonu
                     Button(action: {
                         noteMode.toggle()
@@ -312,7 +336,7 @@ struct ContentView: View {
                         } else if sudokuModel.grid[selected.row][selected.col] != nil {
                             // Normal modda hücreyi temizle
                             withAnimation {
-                                sudokuModel.grid[selected.row][selected.col] = nil
+                                sudokuModel.clearCell(at: selected.row, selected.col)
                             }
                         }
                     }
@@ -423,19 +447,31 @@ struct ContentView: View {
     }
     
     private func getHintText() -> String {
-        // Basit bir ipucu sistemi
+        // Performans iyileştirmesi için ipucu sistemini optimize edelim
+        var hints = [(row: Int, col: Int, num: Int)]()
+        
+        // Önce boş hücreleri bul
         for row in 0..<9 {
             for col in 0..<9 {
                 if sudokuModel.grid[row][col] == nil {
+                    // Her boş hücre için geçerli sayıları kontrol et
                     for num in 1...9 {
                         if sudokuModel.isValid(num, at: row, col: col) {
-                            return "Satır \(row+1), Sütun \(col+1)'e \(num) sayısını yerleştirebilirsiniz."
+                            hints.append((row: row, col: col, num: num))
                         }
                     }
                 }
             }
         }
-        return "Şu anda bir ipucu bulunamadı."
+        
+        // Eğer ipucu bulunamazsa
+        if hints.isEmpty {
+            return "Şu anda bir ipucu bulunamadı."
+        }
+        
+        // Rastgele bir ipucu seç
+        let randomHint = hints.randomElement()!
+        return "Satır \(randomHint.row+1), Sütun \(randomHint.col+1)'e \(randomHint.num) sayısını yerleştirebilirsiniz."
     }
     
     private func startTimer() {

@@ -8,6 +8,18 @@ class SudokuModel: ObservableObject {
     @Published var gameTime: Int = 0
     @Published var isGameComplete: Bool = false
     @Published var shakeGrid: Bool = false
+    @Published var canUndo: Bool = false
+    
+    // Hamle geçmişini tutacak yapı
+    private struct Move {
+        let row: Int
+        let col: Int
+        let oldValue: Int?
+        let newValue: Int?
+    }
+    
+    // Hamle geçmişi
+    private var moveHistory: [Move] = []
     
     enum Difficulty: String, CaseIterable {
         case easy = "Kolay"
@@ -48,6 +60,10 @@ class SudokuModel: ObservableObject {
                 removedCells += 1
             }
         }
+        
+        // Yeni oyun başladığında hamle geçmişini temizle
+        moveHistory.removeAll()
+        canUndo = false
     }
     
     func isValid(_ number: Int, at row: Int, col: Int) -> Bool {
@@ -125,6 +141,11 @@ class SudokuModel: ObservableObject {
         guard let selectedCell = selectedCell else { return }
         
         if isValid(number, at: selectedCell.row, col: selectedCell.col) {
+            // Hamleyi geçmişe kaydet
+            let move = Move(row: selectedCell.row, col: selectedCell.col, oldValue: grid[selectedCell.row][selectedCell.col], newValue: number)
+            moveHistory.append(move)
+            canUndo = true
+            
             grid[selectedCell.row][selectedCell.col] = number
             checkGameCompletion()
         } else {
@@ -135,6 +156,29 @@ class SudokuModel: ObservableObject {
                 self.shakeGrid = false
             }
         }
+    }
+    
+    // Hücreyi temizleme fonksiyonu
+    func clearCell(at row: Int, col: Int) {
+        if grid[row][col] != nil {
+            // Hamleyi geçmişe kaydet
+            let move = Move(row: row, col: col, oldValue: grid[row][col], newValue: nil)
+            moveHistory.append(move)
+            canUndo = true
+            
+            grid[row][col] = nil
+        }
+    }
+    
+    // Son hamleyi geri alma fonksiyonu
+    func undoLastMove() {
+        guard !moveHistory.isEmpty else { return }
+        
+        let lastMove = moveHistory.removeLast()
+        grid[lastMove.row][lastMove.col] = lastMove.oldValue
+        
+        // Geçmişte hamle kalmadıysa geri alma butonunu devre dışı bırak
+        canUndo = !moveHistory.isEmpty
     }
     
     private func checkGameCompletion() {
