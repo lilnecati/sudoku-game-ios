@@ -114,7 +114,7 @@ struct ContentView: View {
                 HowToPlayView()
             }
             .sheet(isPresented: $showingSettings) {
-                SettingsView(isPresented: $showingSettings, themeColor: $themeColor, sudokuModel: sudokuModel)
+                SettingsView(isPresented: $showingSettings, themeColor: $selectedTheme, sudokuModel: sudokuModel)
             }
             .sheet(isPresented: $showingDifficultyPicker) {
                 DifficultyPickerView(difficulty: $sudokuModel.difficulty, themeColor: themeColor)
@@ -1098,7 +1098,7 @@ struct ConfettiPiece: View {
 
 struct SettingsView: View {
     @Binding var isPresented: Bool
-    @Binding var themeColor: Color
+    @Binding var themeColor: ThemeColor
     @ObservedObject var sudokuModel: SudokuModel
     @Environment(\.colorScheme) var colorScheme
     
@@ -1106,9 +1106,7 @@ struct SettingsView: View {
         colorScheme == .dark
     }
     
-    private let themeColors: [Color] = [
-        .blue, .green, .purple, .orange, .pink, .red, .teal, .indigo
-    ]
+    private let themeColors: [ThemeColor] = ThemeColor.allCases
     
     var body: some View {
         VStack(spacing: 20) {
@@ -1149,11 +1147,11 @@ struct SettingsView: View {
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
                                         .fill(sudokuModel.difficulty == difficulty ? 
-                                              themeColor.opacity(0.3) : 
+                                              themeColor.mainColor.opacity(0.3) : 
                                               (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
                                 )
                                 .foregroundColor(sudokuModel.difficulty == difficulty ? 
-                                                themeColor : 
+                                                themeColor.mainColor : 
                                                 (isDarkMode ? .white : .black))
                         }
                     }
@@ -1170,13 +1168,13 @@ struct SettingsView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 15) {
                     ForEach(themeColors, id: \.self) { color in
                         Circle()
-                            .fill(color)
+                            .fill(color.mainColor)
                             .frame(width: 40, height: 40)
                             .overlay(
                                 Circle()
                                     .stroke(color == themeColor ? .white : .clear, lineWidth: 2)
                             )
-                            .shadow(color: color.opacity(0.5), radius: 3, x: 0, y: 2)
+                            .shadow(color: color.mainColor.opacity(0.5), radius: 3, x: 0, y: 2)
                             .onTapGesture {
                                 withAnimation {
                                     themeColor = color
@@ -1201,9 +1199,9 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity)
                     .background(
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(themeColor)
+                            .fill(themeColor.mainColor)
                     )
-                    .shadow(color: themeColor.opacity(0.3), radius: 5, x: 0, y: 2)
+                    .shadow(color: themeColor.mainColor.opacity(0.3), radius: 5, x: 0, y: 2)
             }
             
             Spacer()
