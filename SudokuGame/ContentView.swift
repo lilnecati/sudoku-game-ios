@@ -60,7 +60,7 @@ struct ContentView: View {
     
     // Ekran boyutuna göre buton boyutunu ayarla
     private var numberButtonSize: CGFloat {
-        UIScreen.main.bounds.width < 400 ? 40 : 45
+        UIScreen.main.bounds.width < 400 ? 45 : 50
     }
     
     var themeColor: Color {
@@ -310,14 +310,14 @@ struct ContentView: View {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(themeColor, lineWidth: 2)
+                                .stroke(themeColor, lineWidth: 3)
                         )
                         .padding(.horizontal, UIScreen.main.bounds.width < 400 ? 2 : 5)
                         .scaleEffect(sudokuModel.shakeGrid ? 0.95 : 1.0)
                         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: sudokuModel.shakeGrid)
                         .frame(
-                            maxWidth: UIScreen.main.bounds.width < 400 ? UIScreen.main.bounds.width - 10 : .infinity,
-                            maxHeight: UIScreen.main.bounds.width < 400 ? UIScreen.main.bounds.width - 10 : .infinity
+                            maxWidth: UIScreen.main.bounds.width,
+                            maxHeight: UIScreen.main.bounds.width
                         )
                         .aspectRatio(1, contentMode: .fit)
                         
@@ -346,7 +346,7 @@ struct ContentView: View {
                                     selectedNumber = number
                                 }) {
                                     Text("\(number)")
-                                        .font(.title)
+                                        .font(.system(size: 24, weight: .bold))
                                         .frame(width: numberButtonSize, height: numberButtonSize)
                                         .background(
                                             RoundedRectangle(cornerRadius: 8)
@@ -394,24 +394,7 @@ struct ContentView: View {
                             .foregroundColor(.white)
                             .shadow(color: Color.red.opacity(0.3), radius: 2, x: 0, y: 1)
                         }
-                        .padding(.bottom, UIScreen.main.bounds.width < 400 ? 5 : 10)
-                        
-                        // Alt bilgi çubuğu
-                        HStack {
-                            Spacer()
-                            
-                            Toggle(isOn: $isDarkMode) {
-                                HStack {
-                                    Image(systemName: isDarkMode ? "moon.fill" : "sun.max.fill")
-                                    Text(isDarkMode ? "Karanlık Mod" : "Aydınlık Mod")
-                                }
-                                .foregroundColor(isDarkMode ? .white : .black)
-                            }
-                            .toggleStyle(SwitchToggleStyle(tint: themeColor))
-                            
-                            Spacer()
-                        }
-                        .padding()
+                        .padding(.bottom, UIScreen.main.bounds.width < 400 ? 10 : 15)
                     }
                 }
             }
@@ -583,9 +566,9 @@ struct SudokuBlock: View {
     let isDarkMode: Bool
     
     var body: some View {
-        VStack(spacing: 1) {
+        VStack(spacing: 3) {
             ForEach(0..<3) { row in
-                HStack(spacing: 1) {
+                HStack(spacing: 3) {
                     ForEach(0..<3) { col in
                         let actualRow = blockRow * 3 + row
                         let actualCol = blockCol * 3 + col
@@ -602,9 +585,13 @@ struct SudokuBlock: View {
                 }
             }
         }
-        .background(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
+        .background(isDarkMode ? Color.gray.opacity(0.4) : Color.gray.opacity(0.3))
         .cornerRadius(4)
-        .padding(2)
+        .padding(3)
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(isDarkMode ? Color.gray.opacity(0.7) : Color.gray.opacity(0.6), lineWidth: 2.5)
+        )
     }
 }
 
@@ -621,7 +608,7 @@ struct SudokuCellView: View {
     
     private var cellSize: CGFloat {
         // Ekran boyutuna göre hücre boyutunu ayarla
-        let baseSize: CGFloat = UIScreen.main.bounds.width < 400 ? 35 : 40
+        let baseSize: CGFloat = UIScreen.main.bounds.width < 400 ? 38 : 45
         return horizontalSizeClass == .compact ? baseSize : baseSize + 5
     }
     
@@ -895,7 +882,13 @@ struct SettingsView: View {
         NavigationView {
             Form {
                 Section(header: Text("Görünüm")) {
-                    Toggle("Karanlık Mod", isOn: $isDarkMode)
+                    HStack {
+                        Image(systemName: isDarkMode ? "moon.fill" : "sun.max.fill")
+                            .foregroundColor(isDarkMode ? .yellow : .orange)
+                        
+                        Toggle("Karanlık Mod", isOn: $isDarkMode)
+                            .toggleStyle(SwitchToggleStyle(tint: selectedTheme.mainColor))
+                    }
                     
                     Picker("Tema Rengi", selection: $selectedTheme) {
                         ForEach(ThemeColor.allCases) { theme in
