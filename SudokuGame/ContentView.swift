@@ -5,21 +5,48 @@ class AppLifecycleManager: ObservableObject {
     @Published var isActive = true
     
     init() {
-        // Uygulama arka plana geçtiğinde
-        NotificationCenter.default.addObserver(self, selector: #selector(appDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
-        
-        // Uygulama ön plana geldiğinde
-        NotificationCenter.default.addObserver(self, selector: #selector(appWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        setupNotifications()
     }
     
-    @objc func appDidEnterBackground() {
+    private func setupNotifications() {
+        // Uygulama arka plana geçtiğinde
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        
+        // Uygulama ön plana geldiğinde
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+        
+        // Uygulama aktif olduğunda
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func appDidEnterBackground() {
+        print("Uygulama arka plana geçti")
         isActive = false
     }
     
-    @objc func appWillEnterForeground() {
+    @objc private func appWillEnterForeground() {
+        print("Uygulama ön plana geliyor")
         isActive = true
-        
-        // Uygulama ön plana geldiğinde yeni oyun başlatma bildirimi gönder
+    }
+    
+    @objc private func appDidBecomeActive() {
+        print("Uygulama aktif oldu")
+        // Uygulama aktif olduğunda yükleme ekranını göstermek için bildirim gönder
         NotificationCenter.default.post(name: NSNotification.Name("AppBecameActive"), object: nil)
     }
     
@@ -1372,10 +1399,11 @@ struct SettingsView: View {
                                 .fill(userColorScheme == .light ? 
                                       themeColor.mainColor.opacity(0.3) : 
                                       (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
+                                )
+                                .foregroundColor(userColorScheme == .light ? 
+                                                themeColor.mainColor : 
+                                                (isDarkMode ? .white : .black))
                         )
-                        .foregroundColor(userColorScheme == .light ? 
-                                        themeColor.mainColor : 
-                                        (isDarkMode ? .white : .black))
                     }
                     
                     Button(action: {
@@ -1397,10 +1425,11 @@ struct SettingsView: View {
                                 .fill(userColorScheme == .dark ? 
                                       themeColor.mainColor.opacity(0.3) : 
                                       (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
+                                )
+                                .foregroundColor(userColorScheme == .dark ? 
+                                                themeColor.mainColor : 
+                                                (isDarkMode ? .white : .black))
                         )
-                        .foregroundColor(userColorScheme == .dark ? 
-                                        themeColor.mainColor : 
-                                        (isDarkMode ? .white : .black))
                     }
                     
                     Button(action: {
@@ -1422,10 +1451,11 @@ struct SettingsView: View {
                                 .fill(userColorScheme == nil ? 
                                       themeColor.mainColor.opacity(0.3) : 
                                       (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
+                                )
+                                .foregroundColor(userColorScheme == nil ? 
+                                                themeColor.mainColor : 
+                                                (isDarkMode ? .white : .black))
                         )
-                        .foregroundColor(userColorScheme == nil ? 
-                                        themeColor.mainColor : 
-                                        (isDarkMode ? .white : .black))
                     }
                 }
             }
@@ -1549,8 +1579,8 @@ struct LoadingView: View {
                             }
                         }
                     }
-                    .scaleEffect(0.8)
                 }
+                .scaleEffect(0.8)
                 
                 // İpucu metni
                 Text(tips[tipIndex])

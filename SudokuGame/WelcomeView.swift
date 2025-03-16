@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct WelcomeView: View {
+    @StateObject private var gameStats = GameStats()
     @State private var isGameStarted = false
     @State private var selectedDifficulty: SudokuModel.Difficulty = .orta
     @State private var showingHowToPlay = false
@@ -15,7 +16,8 @@ struct WelcomeView: View {
     @State private var logoScale: CGFloat = 0.8
     @State private var titleOpacity: Double = 0
     @State private var contentOpacity: Double = 0
-    @State private var buttonOffset: CGFloat = 100
+    @State private var logoOffset: CGFloat = -50
+    @State private var buttonOffset: CGFloat = 50
     
     // Tema renkleri
     private var primaryColor: Color {
@@ -181,19 +183,29 @@ struct WelcomeView: View {
                             gameStats.incrementGamesStarted()
                             gameStats.setLastPlayedDate(Date())
                         }) {
-                            Text("Oyuna Başla")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(primaryColor)
-                                        .shadow(color: primaryColor.opacity(0.5), radius: 5, x: 0, y: 3)
-                                )
+                            HStack {
+                                Image(systemName: "play.fill")
+                                    .font(.headline)
+                                Text("OYUNA BAŞLA")
+                                    .font(.headline)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 60)
+                            .background(
+                                LinearGradient(gradient: Gradient(colors: [primaryColor, secondaryColor]),
+                                              startPoint: .leading, endPoint: .trailing)
+                            )
+                            .cornerRadius(15)
+                            .shadow(color: primaryColor.opacity(0.5), radius: 5, x: 0, y: 3)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 15)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                            )
                         }
-                        .padding(.horizontal)
-                        .padding(.top, 20)
+                        .padding(.horizontal, 30)
+                        .offset(y: buttonOffset)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2), value: buttonOffset)
                     }
                     .opacity(contentOpacity)
                     .animation(.easeIn(duration: 0.8).delay(0.5), value: contentOpacity)
@@ -225,8 +237,6 @@ struct WelcomeView: View {
                     .sheet(isPresented: $showingHowToPlay) {
                         HowToPlayView()
                     }
-                    .offset(y: buttonOffset)
-                    .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.3), value: buttonOffset)
                 }
                 .opacity(contentOpacity)
                 .animation(.easeIn(duration: 0.8).delay(0.5), value: contentOpacity)
@@ -254,6 +264,7 @@ struct WelcomeView: View {
                 logoScale = 1.0
                 titleOpacity = 1.0
                 contentOpacity = 1.0
+                logoOffset = 0
                 buttonOffset = 0
             }
         }
