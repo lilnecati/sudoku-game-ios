@@ -438,14 +438,14 @@ struct ContentView: View {
     }
     
     private var numberPickerView: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
                 ForEach(1...5, id: \.self) { number in
                     numberButton(for: number)
                 }
             }
             
-            HStack(spacing: 8) {
+            HStack(spacing: 12) {
                 ForEach(6...9, id: \.self) { number in
                     numberButton(for: number)
                 }
@@ -475,17 +475,18 @@ struct ContentView: View {
                         .foregroundColor(isDarkMode ? .white : .black)
                         .frame(width: buttonSize, height: buttonSize)
                         .background(
-                            RoundedRectangle(cornerRadius: 8)
+                            RoundedRectangle(cornerRadius: 12)
                                 .fill(isDarkMode ? Color.red.opacity(0.2) : Color.red.opacity(0.1))
+                                .shadow(color: Color.red.opacity(0.3), radius: 2, x: 0, y: 1)
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8)
+                            RoundedRectangle(cornerRadius: 12)
                                 .stroke(Color.red.opacity(0.3), lineWidth: 1)
                         )
                 }
             }
         }
-        .padding(.vertical, 5)
+        .padding(.vertical, 10)
     }
     
     private func numberButton(for number: Int) -> some View {
@@ -494,6 +495,10 @@ struct ContentView: View {
         
         return Button(action: {
             if !isCompleted {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                    selectedNumber = number
+                }
+                
                 if let selectedCell = sudokuModel.selectedCell {
                     // Seçili hücreye sayı gir
                     sudokuModel.enterNumber(number, at: selectedCell.row, col: selectedCell.col)
@@ -512,36 +517,49 @@ struct ContentView: View {
             }
         }) {
             ZStack {
-                Rectangle()
-                    .fill(isSelected ? themeColor.opacity(0.3) : (isDarkMode ? Color.black.opacity(0.1) : Color.white.opacity(0.7)))
+                // Arka plan
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(
+                        isSelected ? 
+                        themeColor.opacity(0.3) : 
+                        (isDarkMode ? Color.black.opacity(0.2) : Color.white.opacity(0.9))
+                    )
+                    .shadow(
+                        color: isSelected ? themeColor.opacity(0.5) : Color.black.opacity(0.1),
+                        radius: isSelected ? 4 : 2,
+                        x: 0,
+                        y: isSelected ? 2 : 1
+                    )
                     .frame(width: buttonSize, height: buttonSize)
                 
+                // Sayı
                 Text("\(number)")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(isDarkMode ? .white : .black)
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .foregroundColor(
+                        isSelected ? 
+                        (isDarkMode ? .white : themeColor) : 
+                        (isDarkMode ? .white : .black)
+                    )
+                    .shadow(color: isSelected ? themeColor.opacity(0.5) : Color.clear, radius: isSelected ? 1 : 0)
                 
+                // Tamamlanmış sayılar için işaret
                 if isCompleted {
                     ZStack {
-                        Rectangle()
+                        RoundedRectangle(cornerRadius: 12)
                             .fill(Color.red.opacity(0.4))
                             .frame(width: buttonSize, height: buttonSize)
                         
-                        Image(systemName: "xmark.circle.fill")
+                        Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 26, weight: .bold))
-                            .foregroundColor(.red)
+                            .foregroundColor(.white)
+                            .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
                     }
                 }
             }
+            .scaleEffect(isSelected ? 1.1 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
         }
         .buttonStyle(PlainButtonStyle())
-        .overlay(
-            RoundedRectangle(cornerRadius: 2)
-                .stroke(
-                    isSelected ? themeColor : (isDarkMode ? Color.white.opacity(0.2) : Color.black.opacity(0.2)), 
-                    lineWidth: isSelected ? 2 : 0.5 // Seçili değilse de ince bir çizgi ekle
-                )
-        )
-        .scaleEffect(isSelected ? 1.01 : 1.0)
         .disabled(isCompleted)
     }
     
