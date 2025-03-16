@@ -58,6 +58,7 @@ struct ContentView: View {
     @State private var showingWelcomeScreen = false
     @State private var isLoading = false
     @Environment(\.colorScheme) var colorScheme
+    @State private var showingGameCompleteAlert = false
     
     // Sabit değerler - performans için önceden hesaplanır
     private let buttonSize: CGFloat = UIScreen.main.bounds.width < 375 ? 40 : 45
@@ -114,7 +115,7 @@ struct ContentView: View {
                 HowToPlayView()
             }
             .sheet(isPresented: $showingSettings) {
-                SettingsView(isDarkMode: $isDarkMode, selectedTheme: $selectedTheme)
+                SettingsView(isPresented: $showingSettings, themeColor: $selectedTheme, sudokuModel: sudokuModel)
             }
             .sheet(isPresented: $showingDifficultyPicker) {
                 DifficultyPickerView(difficulty: $sudokuModel.difficulty, themeColor: themeColor)
@@ -129,7 +130,7 @@ struct ContentView: View {
                     dismissButton: .default(Text("Tamam"))
                 )
             }
-            .alert(isPresented: $sudokuModel.isGameComplete) {
+            .alert(isPresented: $showingGameCompleteAlert) {
                 Alert(
                     title: Text("Tebrikler!"),
                     message: Text("Sudoku'yu \(formatTime(sudokuModel.gameTime)) sürede, \(sudokuModel.mistakes) hata ile tamamladınız!"),
@@ -366,65 +367,38 @@ struct ContentView: View {
                             themeColor: themeColor,
                             isDarkMode: isDarkMode
                         )
+                        .id("block-\(blockRow)-\(blockCol)") // Sabit ID ile gereksiz yeniden render önlenir
                     }
                 }
             }
         }
-        .background(gridBackground)
-        .overlay(gridOverlay)
-        .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 5 : 2)
-        .scaleEffect(sudokuModel.shakeGrid ? 0.98 : 1.0)
-        .animation(.easeInOut(duration: 0.1), value: sudokuModel.shakeGrid)
-        .frame(
-            maxWidth: min(UIScreen.main.bounds.width - 8, UIScreen.main.bounds.height * 0.8),
-            maxHeight: min(UIScreen.main.bounds.width - 8, UIScreen.main.bounds.height * 0.8)
-        )
-        .aspectRatio(1, contentMode: .fit)
-        .rotation3DEffect(
-            .degrees(sudokuModel.isGameComplete ? 360 : 0),
-            axis: (x: 0, y: 1, z: 0),
-            anchor: .center,
-            anchorZ: 0,
-            perspective: 0.3
-        )
-        .animation(gridCompletionAnimation, value: sudokuModel.isGameComplete)
-        .drawingGroup() // Metal hızlandırma için
-    }
-    
-    private var gridBackground: some View {
-        RoundedRectangle(cornerRadius: 16)
-            .fill(
-                isDarkMode ? 
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.black.opacity(0.4), Color.black.opacity(0.2)]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ) :
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.white, Color.white.opacity(0.9)]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(
+                    isDarkMode ?
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.2)]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ) :
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.white, Color.gray.opacity(0.1)]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
-            )
-            .shadow(color: isDarkMode ? Color.black.opacity(0.5) : Color.gray.opacity(0.3), radius: 15, x: 0, y: 8)
-    }
-    
-    private var gridOverlay: some View {
-        RoundedRectangle(cornerRadius: 16)
-            .stroke(
-                LinearGradient(
-                    gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 3
-            )
-    }
-    
-    private var gridCompletionAnimation: Animation {
-        sudokuModel.isGameComplete ?
-        .spring(response: 0.6, dampingFraction: 0.6).delay(0.1) :
-        .spring(response: 0.3, dampingFraction: 0.6)
+                .shadow(color: isDarkMode ? Color.black.opacity(0.3) : Color.gray.opacity(0.3), radius: 5, x: 0, y: 2)
+        )
+        .cornerRadius(8)
+        .padding(5)
+        .scaleEffect(sudokuModel.isShaking ? 0.98 : 1.0)
+        .animation(.easeInOut(duration: 0.1), value: sudokuModel.isShaking)
+        .rotation3DEffect(
+            sudokuModel.isGameComplete ? Angle(degrees: 360) : Angle(degrees: 0),
+            axis: (x: 0.0, y: 1.0, z: 0.0)
+        )
+        .animation(.easeInOut(duration: 0.5), value: sudokuModel.isGameComplete)
+        .drawingGroup() // Metal hızlandırma için
     }
     
     private var numberPickerView: some View {
@@ -626,10 +600,16 @@ struct ContentView: View {
         startTimer()
     }
     
-    private func formatTime(_ seconds: Int) -> String {
-        let minutes = seconds / 60
-        let remainingSeconds = seconds % 60
-        return String(format: "%02d:%02d", minutes, remainingSeconds)
+    private func formatTime(_ timeInterval: TimeInterval) -> String {
+        let hours = Int(timeInterval) / 3600
+        let minutes = Int(timeInterval) / 60 % 60
+        let seconds = Int(timeInterval) % 60
+        
+        if hours > 0 {
+            return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%02d:%02d", minutes, seconds)
+        }
     }
     
     // Yeni oyun başlatma fonksiyonu
@@ -675,6 +655,17 @@ struct SudokuBlock: View {
         return indices
     }
     
+    // Blok arka plan rengini hesapla
+    private var blockBackground: some View {
+        let isEvenBlock = (blockRow + blockCol) % 2 == 0
+        return Rectangle()
+            .fill(
+                isDarkMode ?
+                (isEvenBlock ? Color.gray.opacity(0.25) : Color.gray.opacity(0.3)) :
+                (isEvenBlock ? Color.gray.opacity(0.15) : Color.gray.opacity(0.2))
+            )
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             ForEach(0..<3) { row in
@@ -704,16 +695,6 @@ struct SudokuBlock: View {
             RoundedRectangle(cornerRadius: 4)
                 .stroke(isDarkMode ? Color.gray.opacity(0.6) : Color.gray.opacity(0.5), lineWidth: 1.5)
         )
-    }
-    
-    private var blockBackground: some View {
-        let isEvenBlock = (blockRow + blockCol) % 2 == 0
-        return Rectangle()
-            .fill(
-                isDarkMode ?
-                (isEvenBlock ? Color.gray.opacity(0.25) : Color.gray.opacity(0.3)) :
-                (isEvenBlock ? Color.gray.opacity(0.15) : Color.gray.opacity(0.2))
-            )
     }
 }
 
@@ -1039,46 +1020,125 @@ struct ConfettiPiece: View {
 }
 
 struct SettingsView: View {
-    @Binding var isDarkMode: Bool
-    @Binding var selectedTheme: ThemeColor
-    @Environment(\.presentationMode) var presentationMode
+    @Binding var isPresented: Bool
+    @Binding var themeColor: Color
+    @ObservedObject var sudokuModel: SudokuModel
+    @Environment(\.colorScheme) var colorScheme
+    
+    private var isDarkMode: Bool {
+        colorScheme == .dark
+    }
+    
+    private let themeColors: [Color] = [
+        .blue, .green, .purple, .orange, .pink, .red, .teal, .indigo
+    ]
     
     var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("Görünüm")) {
-                    HStack {
-                        Image(systemName: isDarkMode ? "moon.fill" : "sun.max.fill")
-                            .foregroundColor(isDarkMode ? .yellow : .orange)
-                        
-                        Toggle("Karanlık Mod", isOn: $isDarkMode)
-                            .toggleStyle(SwitchToggleStyle(tint: selectedTheme.mainColor))
+        VStack(spacing: 20) {
+            HStack {
+                Text("Ayarlar")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(isDarkMode ? .white : .black)
+                
+                Spacer()
+                
+                Button(action: {
+                    withAnimation {
+                        isPresented = false
                     }
-                    
-                    Picker("Tema Rengi", selection: $selectedTheme) {
-                        ForEach(ThemeColor.allCases) { theme in
-                            HStack {
-                                Circle()
-                                    .fill(theme.mainColor)
-                                    .frame(width: 20, height: 20)
-                                Text(theme.rawValue)
-                            }
-                            .tag(theme)
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.gray)
+                }
+            }
+            .padding(.bottom, 10)
+            
+            // Zorluk seviyesi ayarı
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Zorluk Seviyesi")
+                    .font(.headline)
+                    .foregroundColor(isDarkMode ? .white : .black)
+                
+                HStack {
+                    ForEach(SudokuModel.Difficulty.allCases, id: \.self) { difficulty in
+                        Button(action: {
+                            sudokuModel.difficulty = difficulty
+                        }) {
+                            Text(difficulty.rawValue)
+                                .padding(.horizontal, 15)
+                                .padding(.vertical, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(sudokuModel.difficulty == difficulty ? 
+                                              themeColor.opacity(0.3) : 
+                                              (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
+                                )
+                                .foregroundColor(sudokuModel.difficulty == difficulty ? 
+                                                themeColor : 
+                                                (isDarkMode ? .white : .black))
                         }
                     }
                 }
+            }
+            .padding(.bottom, 10)
+            
+            // Tema rengi ayarı
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Tema Rengi")
+                    .font(.headline)
+                    .foregroundColor(isDarkMode ? .white : .black)
                 
-                Section(header: Text("Hakkında")) {
-                    Text("Sudoku Oyunu v1.0")
-                    Text("© 2025 Tüm hakları saklıdır")
-                    Text("Necati Yıldırım")
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 15) {
+                    ForEach(themeColors, id: \.self) { color in
+                        Circle()
+                            .fill(color)
+                            .frame(width: 40, height: 40)
+                            .overlay(
+                                Circle()
+                                    .stroke(color == themeColor ? .white : .clear, lineWidth: 2)
+                            )
+                            .shadow(color: color.opacity(0.5), radius: 3, x: 0, y: 2)
+                            .onTapGesture {
+                                withAnimation {
+                                    themeColor = color
+                                }
+                            }
+                    }
                 }
             }
-            .navigationTitle("Ayarlar")
-            .navigationBarItems(trailing: Button("Kapat") {
-                presentationMode.wrappedValue.dismiss()
-            })
+            .padding(.bottom, 10)
+            
+            // Yeni oyun butonu
+            Button(action: {
+                withAnimation {
+                    sudokuModel.newGame()
+                    isPresented = false
+                }
+            }) {
+                Text("Yeni Oyun Başlat")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(themeColor)
+                    )
+                    .shadow(color: themeColor.opacity(0.3), radius: 5, x: 0, y: 2)
+            }
+            
+            Spacer()
         }
+        .padding()
+        .frame(maxWidth: 400)
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(isDarkMode ? Color(UIColor.systemBackground) : Color.white)
+                .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
+        )
+        .padding()
     }
 }
 
@@ -1125,10 +1185,12 @@ struct ContentView_Previews: PreviewProvider {
 }
 
 class SudokuModel: ObservableObject {
-    enum Difficulty: String, CaseIterable {
+    enum Difficulty: String, CaseIterable, Identifiable {
         case kolay = "Kolay"
         case orta = "Orta"
         case zor = "Zor"
+        
+        var id: String { self.rawValue }
     }
     
     @Published var grid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
@@ -1148,7 +1210,7 @@ class SudokuModel: ObservableObject {
     private var cellEditabilityCache: [String: Bool] = [:]
     
     init() {
-        newGame()
+        generateNewGame()
         startTimer()
     }
     
@@ -1156,18 +1218,50 @@ class SudokuModel: ObservableObject {
         timer?.invalidate()
     }
     
-    func newGame() {
+    func generateNewGame() {
         // Önbelleği temizle
         validMovesCache.removeAll()
         cellEditabilityCache.removeAll()
         
         // Yeni oyun oluştur
-        generateNewGame()
+        generateSolution()
         selectedCell = nil
         isShaking = false
         gameTime = 0
         mistakes = 0
         isGameComplete = false
+        
+        // Zorluk seviyesine göre ipuçlarını belirle
+        var hints: Int
+        
+        switch difficulty {
+        case .kolay:
+            hints = 45 // Daha fazla ipucu = daha kolay
+        case .orta:
+            hints = 35
+        case .zor:
+            hints = 25 // Daha az ipucu = daha zor
+        }
+        
+        // Boş ızgara oluştur
+        grid = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+        
+        // Rastgele ipuçlarını yerleştir
+        var positions = [(row: Int, col: Int)]()
+        for row in 0..<9 {
+            for col in 0..<9 {
+                positions.append((row: row, col: col))
+            }
+        }
+        positions.shuffle()
+        
+        for i in 0..<hints {
+            let pos = positions[i]
+            grid[pos.row][pos.col] = solution[pos.row][pos.col]
+        }
+        
+        // Orijinal ızgarayı kaydet
+        originalGrid = grid.map { $0.map { $0 } }
         
         // Zamanlayıcıyı yeniden başlat
         timer?.invalidate()
@@ -1179,6 +1273,11 @@ class SudokuModel: ObservableObject {
             guard let self = self else { return }
             self.gameTime += 1
         }
+    }
+    
+    func stopTimer() {
+        timer?.invalidate()
+        timer = nil
     }
     
     func shake() {
@@ -1273,46 +1372,6 @@ class SudokuModel: ObservableObject {
         }
         
         return nil
-    }
-    
-    private func generateNewGame() {
-        // Çözümü oluştur
-        generateSolution()
-        
-        // Zorluk seviyesine göre ipuçlarını belirle
-        var hints: Int
-        
-        switch difficulty {
-        case .kolay:
-            hints = 45 // Daha fazla ipucu = daha kolay
-        case .orta:
-            hints = 35
-        case .zor:
-            hints = 25 // Daha az ipucu = daha zor
-        }
-        
-        // Boş ızgara oluştur
-        grid = Array(repeating: Array(repeating: nil, count: 9), count: 9)
-        
-        // Rastgele ipuçlarını yerleştir
-        var positions = [(row: Int, col: Int)]()
-        for row in 0..<9 {
-            for col in 0..<9 {
-                positions.append((row: row, col: col))
-            }
-        }
-        positions.shuffle()
-        
-        for i in 0..<hints {
-            let pos = positions[i]
-            grid[pos.row][pos.col] = solution[pos.row][pos.col]
-        }
-        
-        // Orijinal ızgarayı kaydet
-        originalGrid = grid.map { $0.map { $0 } }
-        
-        // Oyun tamamlanma durumunu kontrol et
-        checkGameCompletion()
     }
     
     private func generateSolution() {
