@@ -2,7 +2,7 @@ import SwiftUI
 
 struct WelcomeView: View {
     @State private var isGameStarted = false
-    @State private var selectedDifficulty: SudokuModel.Difficulty = .medium
+    @State private var selectedDifficulty: SudokuModel.Difficulty = .orta
     @State private var showingHowToPlay = false
     @State private var showingLogin = false
     @State private var showingEvents = false

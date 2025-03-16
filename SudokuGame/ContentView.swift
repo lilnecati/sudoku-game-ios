@@ -47,7 +47,6 @@ struct ContentView: View {
     @State private var showingSettings = false
     @State private var selectedNumber: Int? = nil
     @State private var timer: Timer? = nil
-    @State private var isDarkMode = false
     @State private var showingDifficultyPicker = false
     @State private var showConfetti = false
     @State private var showingStats = false
@@ -627,24 +626,11 @@ struct ContentView: View {
         // Optimize edilmiş ipucu sistemi
         guard let selectedCell = sudokuModel.selectedCell else {
             // Eğer seçili hücre yoksa, rastgele bir ipucu ver
-            var hints = [(row: Int, col: Int, num: Int)]()
-            
-            for row in 0..<9 {
-                for col in 0..<9 {
-                    if sudokuModel.grid[row][col] == nil && sudokuModel.isCellEditable(at: row, col: col) {
-                        if let correctNumber = sudokuModel.getCorrectNumber(at: row, col: col) {
-                            hints.append((row: row, col: col, num: correctNumber))
-                        }
-                    }
-                }
-            }
-            
-            if hints.isEmpty {
+            if let hint = sudokuModel.getHint() {
+                return "Satır \(hint.row+1), Sütun \(hint.col+1)'e \(hint.value) sayısını yerleştirebilirsiniz."
+            } else {
                 return "Şu anda bir ipucu bulunamadı."
             }
-            
-            let randomHint = hints.randomElement()!
-            return "Satır \(randomHint.row+1), Sütun \(randomHint.col+1)'e \(randomHint.num) sayısını yerleştirebilirsiniz."
         }
         
         // Seçili hücre için ipucu
@@ -659,8 +645,12 @@ struct ContentView: View {
             return "Bu hücre değiştirilemez. Başka bir hücre seçin."
         }
         
-        if let correctNumber = sudokuModel.getCorrectNumber(at: row, col: col) {
-            return "Seçili hücreye \(correctNumber) sayısını yerleştirebilirsiniz."
+        if let hint = sudokuModel.getHint() {
+            if hint.row == row && hint.col == col {
+                return "Seçili hücreye \(hint.value) sayısını yerleştirebilirsiniz."
+            } else {
+                return "Satır \(hint.row+1), Sütun \(hint.col+1)'e \(hint.value) sayısını yerleştirebilirsiniz."
+            }
         }
         
         return "Şu anda bir ipucu bulunamadı."
@@ -1049,9 +1039,9 @@ struct StatsView: View {
         // Basit bir puan hesaplama sistemi
         let difficultyMultiplier: Int
         switch difficulty {
-        case .easy: difficultyMultiplier = 1
-        case .medium: difficultyMultiplier = 2
-        case .hard: difficultyMultiplier = 3
+        case .kolay: difficultyMultiplier = 1
+        case .orta: difficultyMultiplier = 2
+        case .zor: difficultyMultiplier = 3
         }
         
         let timeScore = max(0, 1000 - gameTime * 2)
