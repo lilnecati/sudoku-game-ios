@@ -77,11 +77,12 @@ struct ContentView: View {
         Badge(name: "Zor Seviye", description: "Zor seviyede bir Sudoku çöz", icon: "star.fill", color: .orange),
         Badge(name: "Sudoku Ustası", description: "10 Sudoku çöz", icon: "crown.fill", color: .purple)
     ]
+    @State private var selectedTheme: ColorTheme = .blue
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.presentationMode) var presentationMode
     
     enum SheetType: Identifiable {
-        case difficulty, stats, howToPlay, badges
+        case difficulty, stats, howToPlay, badges, themes
         
         var id: Int {
             switch self {
@@ -89,6 +90,47 @@ struct ContentView: View {
             case .stats: return 1
             case .howToPlay: return 2
             case .badges: return 3
+            case .themes: return 4
+            }
+        }
+    }
+    
+    enum ColorTheme: String, CaseIterable, Identifiable {
+        case blue = "Mavi"
+        case purple = "Mor"
+        case green = "Yeşil"
+        case orange = "Turuncu"
+        case pink = "Pembe"
+        
+        var id: String { self.rawValue }
+        
+        var mainColor: Color {
+            switch self {
+            case .blue: return .blue
+            case .purple: return .purple
+            case .green: return .green
+            case .orange: return .orange
+            case .pink: return .pink
+            }
+        }
+        
+        var secondaryColor: Color {
+            switch self {
+            case .blue: return .cyan
+            case .purple: return Color(red: 0.5, green: 0.2, blue: 0.8)
+            case .green: return .mint
+            case .orange: return .yellow
+            case .pink: return .red
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .blue: return "drop.fill"
+            case .purple: return "sparkles"
+            case .green: return "leaf.fill"
+            case .orange: return "sun.max.fill"
+            case .pink: return "heart.fill"
             }
         }
     }
@@ -215,6 +257,20 @@ struct ContentView: View {
                             }
                             
                             Button(action: {
+                                presentedSheet = .themes
+                            }) {
+                                Image(systemName: selectedTheme.icon)
+                                    .font(.system(size: 18))
+                                    .foregroundColor(themeColor)
+                                    .frame(width: 36, height: 36)
+                                    .background(
+                                        Circle()
+                                            .fill(themeColor.opacity(0.2))
+                                            .shadow(color: themeColor.opacity(0.3), radius: 2, x: 0, y: 1)
+                                    )
+                            }
+                            
+                            Button(action: {
                                 presentedSheet = .badges
                             }) {
                                 HStack(spacing: 4) {
@@ -317,6 +373,15 @@ struct ContentView: View {
                             )
                     case .badges:
                         BadgesView(badges: $badges)
+                            .gesture(DragGesture(minimumDistance: 20, coordinateSpace: .global)
+                                .onEnded { value in
+                                    if value.translation.width > 100 {
+                                        presentedSheet = nil
+                                    }
+                                }
+                            )
+                    case .themes:
+                        ThemePickerView(selectedTheme: $selectedTheme)
                             .gesture(DragGesture(minimumDistance: 20, coordinateSpace: .global)
                                 .onEnded { value in
                                     if value.translation.width > 100 {
@@ -1347,5 +1412,118 @@ struct BadgeDetailView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             onDismiss()
         }
+    }
+}
+
+// SudokuModel sınıfını ekleyelim
+class SudokuModel: ObservableObject {
+    @Published var grid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+    @Published var selectedCell: (row: Int, col: Int)? = nil
+    @Published var mistakes: Int = 0
+    @Published var gameTime: Int = 0
+    @Published var isGameComplete: Bool = false
+    @Published var shakeGrid: Bool = false
+    @Published var difficulty: Difficulty = .medium
+    
+    enum Difficulty: String, CaseIterable {
+        case easy = "Kolay"
+        case medium = "Orta"
+        case hard = "Zor"
+    }
+    
+    init() {
+        generateNewGame()
+    }
+    
+    func generateNewGame() {
+        // Burada gerçek bir Sudoku oluşturma algoritması kullanılabilir
+        // Şimdilik basit bir grid oluşturalım
+        grid = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+        selectedCell = nil
+        isGameComplete = false
+        
+        // Örnek olarak bazı hücreleri dolduralım
+        let cellsToFill = difficulty == .easy ? 30 : (difficulty == .medium ? 25 : 20)
+        for _ in 0..<cellsToFill {
+            let row = Int.random(in: 0..<9)
+            let col = Int.random(in: 0..<9)
+            grid[row][col] = Int.random(in: 1...9)
+        }
+    }
+    
+    func placeNumber(_ number: Int) -> Bool {
+        guard let selected = selectedCell else { return false }
+        
+        // Burada gerçek bir Sudoku doğrulama algoritması kullanılabilir
+        // Şimdilik basit bir kontrol yapalım
+        let isValid = isValidPlacement(number, at: selected.row, col: selected.col)
+        
+        if isValid {
+            grid[selected.row][selected.col] = number
+            
+            // Oyun tamamlandı mı kontrol et
+            checkGameCompletion()
+            
+            return true
+        } else {
+            mistakes += 1
+            
+            // Hata animasyonu
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                shakeGrid = true
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation {
+                    self.shakeGrid = false
+                }
+            }
+            
+            return false
+        }
+    }
+    
+    private func isValidPlacement(_ number: Int, at row: Int, col: Int) -> Bool {
+        // Satır kontrolü
+        for c in 0..<9 {
+            if c != col && grid[row][c] == number {
+                return false
+            }
+        }
+        
+        // Sütun kontrolü
+        for r in 0..<9 {
+            if r != row && grid[r][col] == number {
+                return false
+            }
+        }
+        
+        // 3x3 blok kontrolü
+        let blockRow = row / 3 * 3
+        let blockCol = col / 3 * 3
+        
+        for r in blockRow..<blockRow+3 {
+            for c in blockCol..<blockCol+3 {
+                if (r != row || c != col) && grid[r][c] == number {
+                    return false
+                }
+            }
+        }
+        
+        return true
+    }
+    
+    private func checkGameCompletion() {
+        // Tüm hücreler dolu mu kontrol et
+        for row in 0..<9 {
+            for col in 0..<9 {
+                if grid[row][col] == nil {
+                    return
+                }
+            }
+        }
+        
+        // Tüm hücreler dolu ise oyun tamamlandı
+        isGameComplete = true
     }
 }
