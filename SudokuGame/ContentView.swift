@@ -792,6 +792,7 @@ struct NumberPadView: View {
                             .mask(
                                 RoundedRectangle(cornerRadius: 10)
                                     .frame(maxWidth: .infinity, maxHeight: 42)
+                                )
                             )
                     }
                 )
