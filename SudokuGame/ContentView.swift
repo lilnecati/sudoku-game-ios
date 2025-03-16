@@ -253,7 +253,8 @@ struct SettingsView: View {
                 
                 Section(header: Text("Hakkında")) {
                     Text("Sudoku Oyunu v1.0")
-                    Text("© 2023 Tüm hakları saklıdır")
+                    Text("© 2025 Tüm hakları saklıdır")
+                    Text("Necati Yıldırım")
                 }
             }
             .navigationTitle("Ayarlar")
