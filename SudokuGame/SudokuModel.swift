@@ -128,29 +128,30 @@ class SudokuModel: ObservableObject {
             return cached
         }
         
-        // Satır kontrolü
-        for c in 0..<9 {
-            if grid[row][c] == number && c != col {
+        // Performans için daha hızlı kontroller
+        // Satır kontrolü - daha hızlı implementasyon
+        for c in 0..<9 where c != col {
+            if grid[row][c] == number {
                 validMovesCache[key] = false
                 return false
             }
         }
         
-        // Sütun kontrolü
-        for r in 0..<9 {
-            if grid[r][col] == number && r != row {
+        // Sütun kontrolü - daha hızlı implementasyon
+        for r in 0..<9 where r != row {
+            if grid[r][col] == number {
                 validMovesCache[key] = false
                 return false
             }
         }
         
-        // Blok kontrolü
+        // Blok kontrolü - daha hızlı implementasyon
         let blockRow = (row / 3) * 3
         let blockCol = (col / 3) * 3
         
         for r in blockRow..<blockRow+3 {
-            for c in blockCol..<blockCol+3 {
-                if grid[r][c] == number && (r != row || c != col) {
+            for c in blockCol..<blockCol+3 where (r != row || c != col) {
+                if grid[r][c] == number {
                     validMovesCache[key] = false
                     return false
                 }

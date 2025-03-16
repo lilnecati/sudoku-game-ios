@@ -192,11 +192,9 @@ struct ContentView: View {
     private var topBarView: some View {
         HStack {
             Button(action: {
-                // Ana menüye dön
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                    stopTimer()
-                    showingWelcomeScreen = true
-                }
+                // Ana menüye dön - animasyonu kaldırarak hızlandırıyorum
+                stopTimer()
+                showingWelcomeScreen = true
             }) {
                 HStack(spacing: 5) {
                     Image(systemName: "house.fill")
@@ -449,67 +447,33 @@ struct ContentView: View {
         let isSelected = selectedNumber == number
         
         return Button(action: {
-            withAnimation(.easeInOut(duration: 0.1)) {
-                selectedNumber = isSelected ? nil : number
-                
-                if let cell = sudokuModel.selectedCell, sudokuModel.isCellEditable(at: cell.row, col: cell.col) {
-                    if noteMode {
-                        // Not modunda
-                        if notes[cell.row][cell.col].contains(number) {
-                            notes[cell.row][cell.col].removeAll { $0 == number }
-                        } else {
-                            notes[cell.row][cell.col].append(number)
-                            notes[cell.row][cell.col].sort()
-                        }
-                        
-                        // Hafif haptic feedback
-                        #if os(iOS)
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred(intensity: 0.3)
-                        #endif
-                    } else {
-                        // Normal modda
-                        withAnimation(.easeInOut(duration: 0.1)) {
-                            let success = sudokuModel.isValidMove(number: number, at: cell.row, col: cell.col)
-                            
-                            if success {
-                                sudokuModel.grid[cell.row][cell.col] = number
-                                
-                                // Notları temizle
-                                notes[cell.row][cell.col] = []
-                                
-                                // Oyun tamamlandı mı kontrol et
-                                sudokuModel.checkGameCompletion()
-                            } else {
-                                sudokuModel.shake()
-                                sudokuModel.mistakes += 1
-                            }
-                            
-                            // Haptic feedback - sadece iOS cihazlarda
-                            #if os(iOS)
-                            let generator = UIImpactFeedbackGenerator(style: success ? .medium : .heavy)
-                            generator.impactOccurred(intensity: success ? 0.7 : 1.0)
-                            #endif
-                        }
-                    }
-                }
-            }
+            // Animasyonu kaldırarak hızlandırıyorum
+            sudokuModel.selectedCell = (row: row, col: col)
+            
+            // Haptic feedback - sadece iOS cihazlarda
+            #if os(iOS)
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred(intensity: 0.3)
+            #endif
         }) {
-            Text("\(number)")
-                .font(.system(size: numberButtonFontSize, weight: isSelected ? .bold : .regular))
-                .foregroundColor(isSelected ? .white : (isDarkMode ? .white : .black))
-                .frame(width: buttonSize, height: buttonSize)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(isSelected ? themeColor : (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(themeColor.opacity(isSelected ? 1.0 : 0.3), lineWidth: 1)
-                )
-                .shadow(color: isSelected ? themeColor.opacity(0.3) : Color.clear, radius: 2, x: 0, y: 1)
+            ZStack {
+                Rectangle()
+                    .fill(backgroundColor)
+                    .frame(width: cellSize, height: cellSize)
+                
+                cellContent
+            }
         }
         .buttonStyle(PlainButtonStyle())
+        .overlay(
+            RoundedRectangle(cornerRadius: 2)
+                .stroke(
+                    isSelected ? themeColor : (isDarkMode ? Color.white.opacity(0.2) : Color.black.opacity(0.2)), 
+                    lineWidth: isSelected ? 2 : 0.5 // Seçili değilse de ince bir çizgi ekle
+                )
+        )
+        .scaleEffect(isSelected ? 1.01 : 1.0)
+        // Animasyonları kaldırarak performansı artırıyorum
     }
     
     private func showHint() {
@@ -554,10 +518,12 @@ struct ContentView: View {
         // Önceki zamanlayıcıyı iptal et
         timer?.invalidate()
         
-        // Yeni zamanlayıcı oluştur - 1 saniye aralıklarla
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
-            sudokuModel.gameTime += 1
+        // Yeni zamanlayıcı oluştur - 0.5 saniye aralıklarla
+        timer = Timer(timeInterval: 0.5, repeats: true) { [self] _ in
+            sudokuModel.gameTime += 0.5
         }
+        // Ana thread'de çalıştır
+        RunLoop.main.add(timer!, forMode: .common)
     }
     
     private func stopTimer() {
@@ -761,15 +727,14 @@ struct SudokuCellView: View {
     
     var body: some View {
         Button(action: {
-            withAnimation(.easeInOut(duration: 0.1)) {
-                sudokuModel.selectedCell = (row: row, col: col)
-                
-                // Haptic feedback - sadece iOS cihazlarda
-                #if os(iOS)
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred(intensity: 0.3)
-                #endif
-            }
+            // Animasyonu kaldırarak hızlandırıyorum
+            sudokuModel.selectedCell = (row: row, col: col)
+            
+            // Haptic feedback - sadece iOS cihazlarda
+            #if os(iOS)
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred(intensity: 0.3)
+            #endif
         }) {
             ZStack {
                 Rectangle()
@@ -788,8 +753,7 @@ struct SudokuCellView: View {
                 )
         )
         .scaleEffect(isSelected ? 1.01 : 1.0)
-        .animation(.easeInOut(duration: 0.1), value: isSelected)
-        .animation(.easeInOut(duration: 0.1), value: isHighlightedNumber)
+        // Animasyonları kaldırarak performansı artırıyorum
     }
     
     @ViewBuilder
@@ -808,33 +772,25 @@ struct SudokuCellView: View {
     }
     
     private var notesGrid: some View {
-        VStack(spacing: 0) {
-            ForEach(0..<3) { row in
-                HStack(spacing: 0) {
-                    ForEach(1...3, id: \.self) { col in
-                        noteCell(for: row * 3 + col)
-                    }
+        // Daha verimli not gösterimi
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 3), spacing: 0) {
+            ForEach(1...9, id: \.self) { number in
+                if notes.contains(number) {
+                    Text("\(number)")
+                        .font(.system(size: notesFontSize))
+                        .foregroundColor(
+                            number == selectedNumber ? 
+                            (isDarkMode ? themeColor.opacity(0.9) : themeColor.opacity(0.8)) : 
+                            (isDarkMode ? .white.opacity(0.6) : .black.opacity(0.6))
+                        )
+                        .frame(width: notesItemSize, height: notesItemSize)
+                } else {
+                    Color.clear
+                        .frame(width: notesItemSize, height: notesItemSize)
                 }
             }
         }
         .frame(width: cellSize * 0.9, height: cellSize * 0.9)
-    }
-    
-    @ViewBuilder
-    private func noteCell(for number: Int) -> some View {
-        if notes.contains(number) {
-            Text("\(number)")
-                .font(.system(size: notesFontSize))
-                .foregroundColor(
-                    number == selectedNumber ? 
-                    (isDarkMode ? themeColor.opacity(0.9) : themeColor.opacity(0.8)) : 
-                    (isDarkMode ? .white.opacity(0.6) : .black.opacity(0.6))
-                )
-                .frame(width: notesItemSize, height: notesItemSize)
-        } else {
-            Color.clear
-                .frame(width: notesItemSize, height: notesItemSize)
-        }
     }
 }
 
