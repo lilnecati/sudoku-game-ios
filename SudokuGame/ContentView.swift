@@ -300,9 +300,10 @@ struct ContentView: View {
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(themeColor, lineWidth: 2)
                         )
-                        .padding()
+                        .padding(.horizontal, 5)
                         .scaleEffect(sudokuModel.shakeGrid ? 0.95 : 1.0)
                         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: sudokuModel.shakeGrid)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         
                         Spacer()
                         
@@ -330,7 +331,7 @@ struct ContentView: View {
                                 }) {
                                     Text("\(number)")
                                         .font(.title)
-                                        .frame(width: 35, height: 35)
+                                        .frame(width: 45, height: 45)
                                         .background(
                                             RoundedRectangle(cornerRadius: 8)
                                                 .fill(selectedNumber == number ? themeColor : themeColor.opacity(0.1))
@@ -379,16 +380,6 @@ struct ContentView: View {
                         
                         // Alt bilgi çubuğu
                         HStack {
-                            Button(action: {
-                                showingHowToPlay.toggle()
-                            }) {
-                                HStack {
-                                    Image(systemName: "questionmark.circle")
-                                    Text("Nasıl Oynanır?")
-                                }
-                                .foregroundColor(themeColor)
-                            }
-                            
                             Spacer()
                             
                             Toggle(isOn: $isDarkMode) {
@@ -399,6 +390,8 @@ struct ContentView: View {
                                 .foregroundColor(isDarkMode ? .white : .black)
                             }
                             .toggleStyle(SwitchToggleStyle(tint: themeColor))
+                            
+                            Spacer()
                         }
                         .padding()
                     }
@@ -657,12 +650,12 @@ struct SudokuCellView: View {
             ZStack {
                 Rectangle()
                     .fill(backgroundColor)
-                    .frame(width: 35, height: 35)
+                    .frame(width: 40, height: 40)
                 
                 if let value = value {
                     // Ana sayı
                     Text("\(value)")
-                        .font(.system(size: 20, weight: isEditable ? .regular : .bold))
+                        .font(.system(size: 24, weight: isEditable ? .regular : .bold))
                         .foregroundColor(textColor)
                 } else if !notes.isEmpty {
                     // Notlar
@@ -673,18 +666,18 @@ struct SudokuCellView: View {
                                     let num = row * 3 + col
                                     if notes.contains(num) {
                                         Text("\(num)")
-                                            .font(.system(size: 8))
+                                            .font(.system(size: 10))
                                             .foregroundColor(isDarkMode ? .white.opacity(0.7) : .black.opacity(0.7))
-                                            .frame(width: 10, height: 10)
+                                            .frame(width: 12, height: 12)
                                     } else {
                                         Text("")
-                                            .frame(width: 10, height: 10)
+                                            .frame(width: 12, height: 12)
                                     }
                                 }
                             }
                         }
                     }
-                    .frame(width: 30, height: 30)
+                    .frame(width: 36, height: 36)
                 }
             }
         }
