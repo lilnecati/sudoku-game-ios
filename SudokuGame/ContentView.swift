@@ -170,10 +170,24 @@ struct ContentView: View {
                 showConfetti ? ConfettiView() : nil
             )
             .onAppear {
+                // Uygulama başladığında yükleme ekranını göster
+                withAnimation {
+                    isLoading = true
+                }
+                
                 // Uygulama başladığında otomatik kaydetmeyi başlat
                 sudokuModel.startAutoSave()
-                startTimer()
-                updateCompletedNumbers()
+                
+                // Yükleme ekranını gösterdikten sonra oyunu başlat
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    startTimer()
+                    updateCompletedNumbers()
+                    
+                    // Yükleme ekranını kapat
+                    withAnimation {
+                        isLoading = false
+                    }
+                }
             }
             .onDisappear {
                 // Görünüm kaybolduğunda timer'ı durdur
@@ -637,8 +651,8 @@ struct ContentView: View {
             isLoading = true
         }
         
-        // Yükleme ekranını göstermek için kısa bir gecikme
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        // Yükleme ekranını göstermek için daha uzun bir gecikme
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             // Yeni oyun oluşturma işlemini arka planda yap
             DispatchQueue.global(qos: .userInitiated).async {
                 // Yeni oyun verilerini hazırla
@@ -648,6 +662,9 @@ struct ContentView: View {
                 autoreleasepool {
                     self.sudokuModel.prepareNewGame()
                 }
+                
+                // Yapay gecikme ekle - yükleme ekranını görmek için
+                Thread.sleep(forTimeInterval: 2.0)
                 
                 // UI güncellemelerini ana thread'de yap
                 DispatchQueue.main.async {
@@ -660,7 +677,7 @@ struct ContentView: View {
                     self.sudokuModel.finalizeNewGame()
                     
                     // Kısa bir gecikme ile yükleme ekranını kapat (daha iyi kullanıcı deneyimi için)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         withAnimation(.easeOut(duration: 0.3)) {
                             self.isLoading = false
                         }
@@ -815,8 +832,8 @@ struct SudokuCellView: View {
     
     private var textColor: Color {
         if !isEditable {
-            // Başlangıç hücreleri için farklı renk
-            return isDarkMode ? themeColor : themeColor.opacity(0.8)
+            // Başlangıç hücreleri için farklı renk - daha belirgin
+            return isDarkMode ? Color.yellow : Color.blue
         } else if isHighlightedNumber {
             return isDarkMode ? themeColor.opacity(0.9) : themeColor
         } else {
@@ -892,14 +909,36 @@ struct SudokuCellView: View {
     @ViewBuilder
     private var cellContent: some View {
         if let value = value {
-            // Ana sayı
+            // Ana sayı - daha belirgin
             Text("\(value)")
-                .font(.system(size: fontSize, weight: isEditable ? .medium : .bold, design: .rounded))
+                .font(.system(size: fontSize * 1.2, weight: isEditable ? .semibold : .bold, design: .rounded))
                 .foregroundColor(textColor)
                 .opacity(isHighlightedNumber || isSelected ? 1.0 : 0.9)
                 .shadow(color: isSelected ? themeColor.opacity(0.7) : (isHighlightedNumber ? themeColor.opacity(0.3) : Color.clear), radius: isSelected ? 2 : 0.5)
                 .scaleEffect(isSelected ? 1.2 : (isHighlightedNumber ? 1.1 : 1.0))
                 .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
+                // Sayıların etrafına ince bir kontur ekle
+                .overlay(
+                    Text("\(value)")
+                        .font(.system(size: fontSize * 1.2, weight: isEditable ? .semibold : .bold, design: .rounded))
+                        .foregroundColor(isDarkMode ? Color.black.opacity(0.5) : Color.white.opacity(0.5))
+                        .opacity(0.8)
+                        .scaleEffect(isSelected ? 1.2 : (isHighlightedNumber ? 1.1 : 1.0))
+                        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
+                        .blur(radius: 1.5)
+                        .allowsHitTesting(false)
+                )
+                // Sayıların altına gölge ekle
+                .background(
+                    Text("\(value)")
+                        .font(.system(size: fontSize * 1.2, weight: isEditable ? .semibold : .bold, design: .rounded))
+                        .foregroundColor(isDarkMode ? Color.white.opacity(0.2) : Color.black.opacity(0.2))
+                        .offset(x: 1, y: 1)
+                        .blur(radius: 1.0)
+                        .scaleEffect(isSelected ? 1.2 : (isHighlightedNumber ? 1.1 : 1.0))
+                        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
+                        .allowsHitTesting(false)
+                )
         } else if !notes.isEmpty {
             // Notlar
             notesGrid
