@@ -1399,7 +1399,6 @@ struct SettingsView: View {
                                 .fill(userColorScheme == .light ? 
                                       themeColor.mainColor.opacity(0.3) : 
                                       (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
-                                )
                                 .foregroundColor(userColorScheme == .light ? 
                                                 themeColor.mainColor : 
                                                 (isDarkMode ? .white : .black))
@@ -1425,7 +1424,6 @@ struct SettingsView: View {
                                 .fill(userColorScheme == .dark ? 
                                       themeColor.mainColor.opacity(0.3) : 
                                       (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
-                                )
                                 .foregroundColor(userColorScheme == .dark ? 
                                                 themeColor.mainColor : 
                                                 (isDarkMode ? .white : .black))
@@ -1451,7 +1449,6 @@ struct SettingsView: View {
                                 .fill(userColorScheme == nil ? 
                                       themeColor.mainColor.opacity(0.3) : 
                                       (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
-                                )
                                 .foregroundColor(userColorScheme == nil ? 
                                                 themeColor.mainColor : 
                                                 (isDarkMode ? .white : .black))
