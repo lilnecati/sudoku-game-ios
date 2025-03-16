@@ -375,54 +375,55 @@ struct SudokuGridView: View {
             .font(.system(size: 26, weight: .bold, design: .rounded))
             .frame(width: 45, height: 45)
             .background(cellBackground(isSelected: isSelected, isInSameRowOrCol: isInSameRowOrCol, isInSameBlock: isInSameBlock))
-            Text(value.map(String.init) ?? "")
-                .font(.system(size: 26, weight: .bold, design: .rounded))
-                .frame(width: 45, height: 45)
-                .background(
-                    ZStack {
-                        if isSelected {
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    colorScheme == .dark ? Color.purple.opacity(0.6) : Color.blue.opacity(0.5),
-                                    colorScheme == .dark ? Color.purple.opacity(0.4) : Color.blue.opacity(0.3)
-                                ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        } else if isInSameRowOrCol {
-                            colorScheme == .dark ? Color.purple.opacity(0.15) : Color.blue.opacity(0.15)
-                        } else if isInSameBlock {
-                            colorScheme == .dark ? Color.purple.opacity(0.1) : Color.blue.opacity(0.1)
-                        } else {
-                            colorScheme == .dark ? Color(UIColor.systemGray4) : Color.white
-                        }
-                    }
+            .cornerRadius(10)
+            .overlay(cellBorder(isSelected: isSelected))
+            .shadow(color: shadowColor(isSelected: isSelected), radius: isSelected ? 5 : 0)
+            .foregroundColor(textColor(isInitialValue: isInitialValue))
+            .scaleEffect(isSelected ? 1.08 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+    }
+    
+    private func cellBackground(isSelected: Bool, isInSameRowOrCol: Bool, isInSameBlock: Bool) -> some View {
+        ZStack {
+            if isSelected {
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        colorScheme == .dark ? Color.purple.opacity(0.6) : Color.blue.opacity(0.5),
+                        colorScheme == .dark ? Color.purple.opacity(0.4) : Color.blue.opacity(0.3)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
-                .cornerRadius(10)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(
-                            isSelected ? 
-                                (colorScheme == .dark ? Color.purple : Color.blue) : 
-                                Color.gray.opacity(0.3),
-                            lineWidth: isSelected ? 2.5 : 0.5
-                        )
-                )
-                .shadow(
-                    color: isSelected ? 
-                        (colorScheme == .dark ? Color.purple.opacity(0.5) : Color.blue.opacity(0.3)) : 
-                        Color.clear,
-                    radius: isSelected ? 5 : 0
-                )
-                .foregroundColor(
-                    isInitialValue ? 
-                        (colorScheme == .dark ? Color.gray : Color.black) : 
-                        (colorScheme == .dark ? Color.white : Color.blue)
-                )
-                .scaleEffect(isSelected ? 1.08 : 1.0)
-                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+            } else if isInSameRowOrCol {
+                colorScheme == .dark ? Color.purple.opacity(0.15) : Color.blue.opacity(0.15)
+            } else if isInSameBlock {
+                colorScheme == .dark ? Color.purple.opacity(0.1) : Color.blue.opacity(0.1)
+            } else {
+                colorScheme == .dark ? Color(UIColor.systemGray4) : Color.white
+            }
         }
-        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private func cellBorder(isSelected: Bool) -> some View {
+        RoundedRectangle(cornerRadius: 10)
+            .stroke(
+                isSelected ? 
+                    (colorScheme == .dark ? Color.purple : Color.blue) : 
+                    Color.gray.opacity(0.3),
+                lineWidth: isSelected ? 2.5 : 0.5
+            )
+    }
+    
+    private func shadowColor(isSelected: Bool) -> Color {
+        isSelected ? 
+            (colorScheme == .dark ? Color.purple.opacity(0.5) : Color.blue.opacity(0.3)) : 
+            Color.clear
+    }
+    
+    private func textColor(isInitialValue: Bool) -> Color {
+        isInitialValue ? 
+            (colorScheme == .dark ? Color.gray : Color.black) : 
+            (colorScheme == .dark ? Color.white : Color.blue)
     }
 }
 
