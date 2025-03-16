@@ -487,22 +487,28 @@ struct ContentView: View {
             .foregroundColor(noteMode ? .white : (isDarkMode ? .white : .black))
             .padding(.vertical, 10)
             .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 20 : 15)
-            .background(
-                noteMode ?
+            .background(noteModeBackground)
+        }
+        .padding(.horizontal, horizontalPadding)
+        .padding(.top, 5)
+    }
+    
+    private var noteModeBackground: some View {
+        Group {
+            if noteMode {
                 LinearGradient(
                     gradient: Gradient(colors: [themeColor.opacity(0.8), themeColor]),
                     startPoint: .leading,
                     endPoint: .trailing
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: themeColor.opacity(0.5), radius: 3, x: 0, y: 2) :
+                .shadow(color: themeColor.opacity(0.5), radius: 3, x: 0, y: 2)
+            } else {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(isDarkMode ? Color.gray.opacity(0.3) : Color.gray.opacity(0.1))
                     .shadow(color: Color.gray.opacity(0.2), radius: 2, x: 0, y: 1)
-            )
+            }
         }
-        .padding(.horizontal, horizontalPadding)
-        .padding(.top, 5)
     }
     
     private var sudokuGridView: some View {
@@ -918,33 +924,7 @@ struct SudokuCellView: View {
                     .fill(backgroundColor)
                     .frame(width: cellSize, height: cellSize)
                 
-                if let value = value {
-                    // Ana sayı
-                    Text("\(value)")
-                        .font(.system(size: fontSize, weight: isEditable ? .regular : .bold))
-                        .foregroundColor(textColor)
-                } else if !notes.isEmpty {
-                    // Notlar
-                    VStack(spacing: 1) {
-                        ForEach(0..<3) { row in
-                            HStack(spacing: 1) {
-                                ForEach(1...3, id: \.self) { col in
-                                    let num = row * 3 + col
-                                    if notes.contains(num) {
-                                        Text("\(num)")
-                                            .font(.system(size: notesFontSize))
-                                            .foregroundColor(isDarkMode ? .white.opacity(0.7) : .black.opacity(0.7))
-                                            .frame(width: notesItemSize, height: notesItemSize)
-                                    } else {
-                                        Text("")
-                                            .frame(width: notesItemSize, height: notesItemSize)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .frame(width: cellSize * 0.9, height: cellSize * 0.9)
-                }
+                cellContent
             }
         }
         .buttonStyle(PlainButtonStyle())
@@ -953,6 +933,45 @@ struct SudokuCellView: View {
                 .stroke(isSelected ? themeColor : Color.gray.opacity(0.3), lineWidth: isSelected ? 3 : 1)
         )
         .scaleEffect(isSelected ? 1.05 : 1.0)
+    }
+    
+    @ViewBuilder
+    private var cellContent: some View {
+        if let value = value {
+            // Ana sayı
+            Text("\(value)")
+                .font(.system(size: fontSize, weight: isEditable ? .regular : .bold))
+                .foregroundColor(textColor)
+        } else if !notes.isEmpty {
+            // Notlar
+            notesGrid
+        }
+    }
+    
+    private var notesGrid: some View {
+        VStack(spacing: 1) {
+            ForEach(0..<3) { row in
+                HStack(spacing: 1) {
+                    ForEach(1...3, id: \.self) { col in
+                        noteCell(for: row * 3 + col)
+                    }
+                }
+            }
+        }
+        .frame(width: cellSize * 0.9, height: cellSize * 0.9)
+    }
+    
+    @ViewBuilder
+    private func noteCell(for number: Int) -> some View {
+        if notes.contains(number) {
+            Text("\(number)")
+                .font(.system(size: notesFontSize))
+                .foregroundColor(isDarkMode ? .white.opacity(0.7) : .black.opacity(0.7))
+                .frame(width: notesItemSize, height: notesItemSize)
+        } else {
+            Text("")
+                .frame(width: notesItemSize, height: notesItemSize)
+        }
     }
 }
 
