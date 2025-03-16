@@ -590,7 +590,7 @@ struct SudokuBlock: View {
         .padding(3)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(isDarkMode ? Color.gray.opacity(0.7) : Color.gray.opacity(0.6), lineWidth: 2.5)
+                .stroke(isDarkMode ? Color.gray.opacity(0.8) : Color.gray.opacity(0.7), lineWidth: 3)
         )
     }
 }
@@ -710,7 +710,7 @@ struct SudokuCellView: View {
         .buttonStyle(PlainButtonStyle())
         .overlay(
             RoundedRectangle(cornerRadius: 2)
-                .stroke(isSelected ? themeColor : Color.clear, lineWidth: isSelected ? 2 : 0)
+                .stroke(isSelected ? themeColor : Color.gray.opacity(0.3), lineWidth: isSelected ? 2 : 0.5)
         )
         .scaleEffect(isSelected ? 1.05 : 1.0)
     }
