@@ -297,9 +297,7 @@ struct ContentView: View {
         // Yükleme ekranını gösterdikten sonra oyunu başlat
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             // Yeni oyun oluşturma işlemini arka planda yap
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                guard let self = self else { return }
-                
+            DispatchQueue.global(qos: .userInitiated).async {
                 // Sudoku çözümünü oluştur (en yoğun işlem)
                 autoreleasepool {
                     self.sudokuModel.prepareNewGame()

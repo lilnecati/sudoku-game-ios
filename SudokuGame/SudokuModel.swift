@@ -290,29 +290,34 @@ class SudokuModel: ObservableObject {
     
     private func generateSolution() {
         // Boş ızgara oluştur
-        solution = Array(repeating: Array(repeating: 0, count: 9), count: 9)
+        var tempSolution = Array(repeating: Array(repeating: 0, count: 9), count: 9)
         
         // Çözümü oluştur
-        _ = solveSudoku()
+        _ = solveSudoku(for: &tempSolution)
+        
+        // Ana thread'de solution değişkenini güncelle
+        DispatchQueue.main.async { [weak self] in
+            self?.solution = tempSolution
+        }
     }
     
-    private func solveSudoku() -> Bool {
+    private func solveSudoku(for grid: inout [[Int]]) -> Bool {
         for row in 0..<9 {
             for col in 0..<9 {
-                if solution[row][col] == 0 {
+                if grid[row][col] == 0 {
                     // Rastgele sayı sırası oluştur
                     var numbers = Array(1...9)
                     numbers.shuffle()
                     
                     for num in numbers {
-                        if isSafe(row: row, col: col, num: num) {
-                            solution[row][col] = num
+                        if isSafe(row: row, col: col, num: num, in: grid) {
+                            grid[row][col] = num
                             
-                            if solveSudoku() {
+                            if solveSudoku(for: &grid) {
                                 return true
                             }
                             
-                            solution[row][col] = 0
+                            grid[row][col] = 0
                         }
                     }
                     
@@ -324,17 +329,17 @@ class SudokuModel: ObservableObject {
         return true
     }
     
-    private func isSafe(row: Int, col: Int, num: Int) -> Bool {
+    private func isSafe(row: Int, col: Int, num: Int, in grid: [[Int]]) -> Bool {
         // Satır kontrolü
         for c in 0..<9 {
-            if solution[row][c] == num {
+            if grid[row][c] == num {
                 return false
             }
         }
         
         // Sütun kontrolü
         for r in 0..<9 {
-            if solution[r][col] == num {
+            if grid[r][col] == num {
                 return false
             }
         }
@@ -345,7 +350,7 @@ class SudokuModel: ObservableObject {
         
         for r in blockRow..<blockRow+3 {
             for c in blockCol..<blockCol+3 {
-                if solution[r][c] == num {
+                if grid[r][c] == num {
                     return false
                 }
             }
