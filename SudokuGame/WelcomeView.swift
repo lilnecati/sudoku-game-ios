@@ -340,7 +340,7 @@ struct LoginView: View {
                         Button(action: {
                             showingRegister = true
                         }) {
-                            Text("Zaten hesabınız var mı? Giriş yapın")
+                            Text("Hesabınız yok mu? Kayıt olun")
                                 .font(.footnote)
                                 .foregroundColor(primaryColor)
                         }
@@ -353,6 +353,9 @@ struct LoginView: View {
                 .padding(.vertical)
                 .alert(isPresented: $showingAlert) {
                     Alert(title: Text("Hata"), message: Text(alertMessage), dismissButton: .default(Text("Tamam")))
+                }
+                .sheet(isPresented: $showingRegister) {
+                    RegisterView()
                 }
             }
             .navigationBarTitle("Giriş", displayMode: .inline)
@@ -478,7 +481,6 @@ struct RegisterView: View {
     @State private var confirmPassword = ""
     @State private var showingAlert = false
     @State private var alertMessage = ""
-    @State private var showingRegister = false
     
     private var primaryColor: Color {
         colorScheme == .dark ? Color.purple : Color.blue
@@ -562,9 +564,9 @@ struct RegisterView: View {
                             }
                             
                             Button(action: {
-                                showingRegister = true
+                                presentationMode.wrappedValue.dismiss()
                             }) {
-                                Text("Hesabınız yok mu? Kayıt olun")
+                                Text("Zaten hesabınız var mı? Giriş yapın")
                                     .font(.footnote)
                                     .foregroundColor(primaryColor)
                             }
@@ -590,9 +592,6 @@ struct RegisterView: View {
             .navigationBarItems(trailing: Button("Kapat") {
                 presentationMode.wrappedValue.dismiss()
             })
-            .sheet(isPresented: $showingRegister) {
-                RegisterView()
-            }
         }
     }
 }
