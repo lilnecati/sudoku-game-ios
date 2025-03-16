@@ -137,6 +137,7 @@ struct ContentView: View {
                         case .none: self.userColorSchemeRaw = "system"
                         @unknown default: self.userColorSchemeRaw = "system"
                         }
+                        UserDefaults.standard.synchronize()
                     }
                 ))
             }
@@ -158,13 +159,7 @@ struct ContentView: View {
                     title: Text("Tebrikler!"),
                     message: Text("Sudoku'yu \(formatTime(sudokuModel.gameTime)) sürede, \(sudokuModel.mistakes) hata ile tamamladınız!"),
                     dismissButton: .default(Text("Yeni Oyun")) {
-                        showConfetti = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                            showConfetti = false
-                        }
-                        sudokuModel.generateNewGame()
-                        resetTimer()
-                        notes = Array(repeating: Array(repeating: [], count: 9), count: 9)
+                        startNewGame()
                     }
                 )
             }
@@ -172,10 +167,13 @@ struct ContentView: View {
                 showConfetti ? ConfettiView() : nil
             )
             .onAppear {
+                // Uygulama başladığında otomatik kaydetmeyi başlat
+                sudokuModel.startAutoSave()
                 startTimer()
                 updateCompletedNumbers()
             }
             .onDisappear {
+                // Görünüm kaybolduğunda timer'ı durdur
                 stopTimer()
             }
             .fullScreenCover(isPresented: $showingWelcomeScreen) {
@@ -1045,6 +1043,7 @@ struct SettingsView: View {
     @ObservedObject var sudokuModel: SudokuModel
     @Environment(\.colorScheme) var colorScheme
     @Binding var userColorScheme: ColorScheme?
+    @AppStorage("userColorScheme") private var userColorSchemeRaw: String = "system"
     
     private var isDarkMode: Bool {
         userColorScheme == .dark || (userColorScheme == nil && colorScheme == .dark)
@@ -1139,6 +1138,8 @@ struct SettingsView: View {
                     Button(action: {
                         withAnimation {
                             userColorScheme = .light
+                            userColorSchemeRaw = "light"
+                            UserDefaults.standard.synchronize()
                         }
                     }) {
                         HStack {
@@ -1162,6 +1163,8 @@ struct SettingsView: View {
                     Button(action: {
                         withAnimation {
                             userColorScheme = .dark
+                            userColorSchemeRaw = "dark"
+                            UserDefaults.standard.synchronize()
                         }
                     }) {
                         HStack {
@@ -1185,6 +1188,8 @@ struct SettingsView: View {
                     Button(action: {
                         withAnimation {
                             userColorScheme = nil
+                            userColorSchemeRaw = "system"
+                            UserDefaults.standard.synchronize()
                         }
                     }) {
                         HStack {

@@ -29,7 +29,65 @@ class SudokuModel: ObservableObject {
     @Published var difficulty: Difficulty {
         didSet {
             UserDefaults.standard.set(difficulty.rawValue, forKey: "difficulty")
+            UserDefaults.standard.synchronize()
         }
+    }
+    
+    // Oyun durumunu kaydetme
+    private func saveGameState() {
+        // Grid'i kaydet
+        let gridData = try? JSONEncoder().encode(grid)
+        UserDefaults.standard.set(gridData, forKey: "currentGrid")
+        
+        // Orijinal grid'i kaydet
+        let originalGridData = try? JSONEncoder().encode(originalGrid)
+        UserDefaults.standard.set(originalGridData, forKey: "originalGrid")
+        
+        // Çözümü kaydet
+        let solutionData = try? JSONEncoder().encode(solution)
+        UserDefaults.standard.set(solutionData, forKey: "solution")
+        
+        // Diğer oyun durumu verilerini kaydet
+        UserDefaults.standard.set(gameTime, forKey: "gameTime")
+        UserDefaults.standard.set(mistakes, forKey: "mistakes")
+        UserDefaults.standard.set(isGameComplete, forKey: "isGameComplete")
+        
+        // Değişiklikleri hemen kaydet
+        UserDefaults.standard.synchronize()
+    }
+    
+    // Oyun durumunu yükle
+    private func loadGameState() -> Bool {
+        // Grid'i yükle
+        if let gridData = UserDefaults.standard.data(forKey: "currentGrid"),
+           let loadedGrid = try? JSONDecoder().decode([[Int?]].self, from: gridData) {
+            self.grid = loadedGrid
+        } else {
+            return false
+        }
+        
+        // Orijinal grid'i yükle
+        if let originalGridData = UserDefaults.standard.data(forKey: "originalGrid"),
+           let loadedOriginalGrid = try? JSONDecoder().decode([[Int?]].self, from: originalGridData) {
+            self.originalGrid = loadedOriginalGrid
+        } else {
+            return false
+        }
+        
+        // Çözümü yükle
+        if let solutionData = UserDefaults.standard.data(forKey: "solution"),
+           let loadedSolution = try? JSONDecoder().decode([[Int]].self, from: solutionData) {
+            self.solution = loadedSolution
+        } else {
+            return false
+        }
+        
+        // Diğer oyun durumu verilerini yükle
+        self.gameTime = UserDefaults.standard.double(forKey: "gameTime")
+        self.mistakes = UserDefaults.standard.integer(forKey: "mistakes")
+        self.isGameComplete = UserDefaults.standard.bool(forKey: "isGameComplete")
+        
+        return true
     }
     
     init() {
@@ -37,12 +95,17 @@ class SudokuModel: ObservableObject {
         let savedDifficulty = UserDefaults.standard.string(forKey: "difficulty") ?? Difficulty.orta.rawValue
         self.difficulty = Difficulty.allCases.first { $0.rawValue == savedDifficulty } ?? .orta
         
-        generateNewGame()
-        // Timer'ı ContentView'da başlatacağız
+        // Kaydedilmiş oyun durumunu yüklemeyi dene
+        if !loadGameState() {
+            // Yükleme başarısız olursa yeni oyun oluştur
+            generateNewGame()
+        }
     }
     
     deinit {
         timer?.invalidate()
+        // Çıkışta oyun durumunu kaydet
+        saveGameState()
     }
     
     func generateNewGame() {
@@ -93,6 +156,9 @@ class SudokuModel: ObservableObject {
         // Zamanlayıcıyı yeniden başlat
         timer?.invalidate()
         startTimer()
+        
+        // Yeni oyun durumunu kaydet
+        saveGameState()
     }
     
     private func startTimer() {
@@ -339,10 +405,24 @@ class SudokuModel: ObservableObject {
         if isValidMove(number: number, at: row, col: col) {
             grid[row][col] = number
             checkGameCompletion()
+            
+            // Değişikliği kaydet
+            saveGameState()
         } else {
             // Geçersiz hamle
             shake()
             mistakes += 1
+            
+            // Hata sayısını kaydet
+            saveGameState()
+        }
+    }
+    
+    // Periyodik kaydetme için timer
+    func startAutoSave() {
+        // Her 30 saniyede bir oyun durumunu kaydet
+        Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
+            self?.saveGameState()
         }
     }
 } 
