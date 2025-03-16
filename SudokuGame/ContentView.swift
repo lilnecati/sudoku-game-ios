@@ -58,6 +58,8 @@ struct ContentView: View {
     @State private var isLoading = false
     @Environment(\.colorScheme) var colorScheme
     @State private var showingGameCompleteAlert = false
+    @State private var userColorScheme: ColorScheme? = nil
+    @State private var completedNumbers: Set<Int> = []
     
     // Sabit değerler - performans için önceden hesaplanır
     private let buttonSize: CGFloat = UIScreen.main.bounds.width < 375 ? 40 : 45
@@ -65,7 +67,7 @@ struct ContentView: View {
     private let numberButtonFontSize: CGFloat = UIScreen.main.bounds.width < 375 ? 20 : 22
     
     private var isDarkMode: Bool {
-        colorScheme == .dark
+        userColorScheme == .dark || (userColorScheme == nil && colorScheme == .dark)
     }
     
     var themeColor: Color {
@@ -111,7 +113,7 @@ struct ContentView: View {
                 HowToPlayView()
             }
             .sheet(isPresented: $showingSettings) {
-                SettingsView(isPresented: $showingSettings, themeColor: $selectedTheme, sudokuModel: sudokuModel)
+                SettingsView(isPresented: $showingSettings, themeColor: $selectedTheme, sudokuModel: sudokuModel, userColorScheme: $userColorScheme)
             }
             .sheet(isPresented: $showingDifficultyPicker) {
                 DifficultyPickerView(difficulty: $sudokuModel.difficulty, themeColor: themeColor)
@@ -146,6 +148,7 @@ struct ContentView: View {
             )
             .onAppear {
                 startTimer()
+                updateCompletedNumbers()
             }
             .onDisappear {
                 stopTimer()
@@ -153,6 +156,7 @@ struct ContentView: View {
             .fullScreenCover(isPresented: $showingWelcomeScreen) {
                 WelcomeView()
             }
+            .preferredColorScheme(userColorScheme)
         }
     }
     
@@ -445,18 +449,26 @@ struct ContentView: View {
     
     private func numberButton(for number: Int) -> some View {
         let isSelected = selectedNumber == number
+        let isCompleted = completedNumbers.contains(number)
         
         return Button(action: {
-            if let selectedCell = sudokuModel.selectedCell {
-                // Seçili hücreye sayı gir
-                sudokuModel.enterNumber(number, at: selectedCell.row, col: selectedCell.col)
+            if !isCompleted {
+                if let selectedCell = sudokuModel.selectedCell {
+                    // Seçili hücreye sayı gir
+                    sudokuModel.enterNumber(number, at: selectedCell.row, col: selectedCell.col)
+                    
+                    // Sayı tamamlandı mı kontrol et
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        updateCompletedNumbers()
+                    }
+                }
+                
+                // Haptic feedback - sadece iOS cihazlarda
+                #if os(iOS)
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred(intensity: 0.3)
+                #endif
             }
-            
-            // Haptic feedback - sadece iOS cihazlarda
-            #if os(iOS)
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred(intensity: 0.3)
-            #endif
         }) {
             ZStack {
                 Rectangle()
@@ -466,6 +478,18 @@ struct ContentView: View {
                 Text("\(number)")
                     .font(.system(size: 20, weight: .medium))
                     .foregroundColor(isDarkMode ? .white : .black)
+                
+                if isCompleted {
+                    ZStack {
+                        Rectangle()
+                            .fill(Color.red.opacity(0.2))
+                            .frame(width: buttonSize, height: buttonSize)
+                        
+                        Image(systemName: "xmark")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.red)
+                    }
+                }
             }
         }
         .buttonStyle(PlainButtonStyle())
@@ -477,6 +501,31 @@ struct ContentView: View {
                 )
         )
         .scaleEffect(isSelected ? 1.01 : 1.0)
+        .disabled(isCompleted)
+    }
+    
+    private func updateCompletedNumbers() {
+        var numberCount = Array(repeating: 0, count: 10) // 0-9 için sayaç (0 kullanılmayacak)
+        
+        // Izgaradaki her sayıyı say
+        for row in 0..<9 {
+            for col in 0..<9 {
+                if let number = sudokuModel.grid[row][col] {
+                    numberCount[number] += 1
+                }
+            }
+        }
+        
+        // Tamamlanan sayıları belirle (9 kez kullanıldıysa)
+        var completed = Set<Int>()
+        for number in 1...9 {
+            if numberCount[number] >= 9 {
+                completed.insert(number)
+            }
+        }
+        
+        // Tamamlanan sayıları güncelle
+        completedNumbers = completed
     }
     
     private func showHint() {
@@ -522,8 +571,12 @@ struct ContentView: View {
         timer?.invalidate()
         
         // Yeni zamanlayıcı oluştur - 1 saniye aralıklarla
-        timer = Timer(timeInterval: 1.0, repeats: true) { [self] _ in
-            sudokuModel.gameTime += 1
+        timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            // SudokuModel'deki timer'ı durdur, çünkü orada da bir timer çalışıyor
+            self.sudokuModel.stopTimer()
+            // Sadece buradaki timer'ı kullan
+            self.sudokuModel.gameTime += 1
         }
         // Ana thread'de çalıştır ve daha doğru zamanlama için common modunu kullan
         RunLoop.main.add(timer!, forMode: .common)
@@ -967,9 +1020,10 @@ struct SettingsView: View {
     @Binding var themeColor: ThemeColor
     @ObservedObject var sudokuModel: SudokuModel
     @Environment(\.colorScheme) var colorScheme
+    @Binding var userColorScheme: ColorScheme?
     
     private var isDarkMode: Bool {
-        colorScheme == .dark
+        userColorScheme == .dark || (userColorScheme == nil && colorScheme == .dark)
     }
     
     private let themeColors: [ThemeColor] = ThemeColor.allCases
@@ -1046,6 +1100,85 @@ struct SettingsView: View {
                                     themeColor = color
                                 }
                             }
+                    }
+                }
+            }
+            .padding(.bottom, 10)
+            
+            // Koyu/Açık mod ayarı
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Görünüm Modu")
+                    .font(.headline)
+                    .foregroundColor(isDarkMode ? .white : .black)
+                
+                HStack(spacing: 15) {
+                    Button(action: {
+                        withAnimation {
+                            userColorScheme = .light
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "sun.max.fill")
+                                .font(.system(size: 18))
+                            Text("Açık Mod")
+                        }
+                        .padding(.horizontal, 15)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(userColorScheme == .light ? 
+                                      themeColor.mainColor.opacity(0.3) : 
+                                      (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
+                        )
+                        .foregroundColor(userColorScheme == .light ? 
+                                        themeColor.mainColor : 
+                                        (isDarkMode ? .white : .black))
+                    }
+                    
+                    Button(action: {
+                        withAnimation {
+                            userColorScheme = .dark
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "moon.fill")
+                                .font(.system(size: 18))
+                            Text("Koyu Mod")
+                        }
+                        .padding(.horizontal, 15)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(userColorScheme == .dark ? 
+                                      themeColor.mainColor.opacity(0.3) : 
+                                      (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
+                        )
+                        .foregroundColor(userColorScheme == .dark ? 
+                                        themeColor.mainColor : 
+                                        (isDarkMode ? .white : .black))
+                    }
+                    
+                    Button(action: {
+                        withAnimation {
+                            userColorScheme = nil
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 18))
+                            Text("Sistem")
+                        }
+                        .padding(.horizontal, 15)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(userColorScheme == nil ? 
+                                      themeColor.mainColor.opacity(0.3) : 
+                                      (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
+                        )
+                        .foregroundColor(userColorScheme == nil ? 
+                                        themeColor.mainColor : 
+                                        (isDarkMode ? .white : .black))
                     }
                 }
             }

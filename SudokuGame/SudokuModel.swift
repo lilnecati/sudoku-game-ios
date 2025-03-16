@@ -28,7 +28,7 @@ class SudokuModel: ObservableObject {
     
     init() {
         generateNewGame()
-        startTimer()
+        // Timer'ı ContentView'da başlatacağız
     }
     
     deinit {
