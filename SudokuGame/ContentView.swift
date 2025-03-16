@@ -482,11 +482,11 @@ struct ContentView: View {
                 if isCompleted {
                     ZStack {
                         Rectangle()
-                            .fill(Color.red.opacity(0.2))
+                            .fill(Color.red.opacity(0.4))
                             .frame(width: buttonSize, height: buttonSize)
                         
-                        Image(systemName: "xmark")
-                            .font(.system(size: 20, weight: .bold))
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 26, weight: .bold))
                             .foregroundColor(.red)
                     }
                 }

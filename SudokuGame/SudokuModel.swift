@@ -86,10 +86,8 @@ class SudokuModel: ObservableObject {
     }
     
     private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            self.gameTime += 1
-        }
+        // ContentView'da timer kullanıldığı için burada timer başlatmıyoruz
+        // Bu fonksiyon geriye dönük uyumluluk için korundu
     }
     
     func stopTimer() {
