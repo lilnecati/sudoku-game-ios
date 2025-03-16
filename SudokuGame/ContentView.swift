@@ -98,6 +98,8 @@ struct ContentView: View {
                 
                 if isLoading {
                     LoadingView(themeColor: themeColor, isDarkMode: isDarkMode)
+                        .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .center)))
+                        .zIndex(1) // Yükleme ekranını en üstte göster
                 } else {
                     VStack(spacing: 10) {
                         // Geliştirilmiş üst bilgi çubuğu
@@ -119,6 +121,7 @@ struct ContentView: View {
                         // Geliştirilmiş rakam seçici
                         numberPickerView
                     }
+                    .transition(.opacity)
                 }
             }
             .sheet(isPresented: $showingHowToPlay) {
@@ -629,22 +632,39 @@ struct ContentView: View {
     
     // Yeni oyun başlatma fonksiyonu
     private func startNewGame() {
-        isLoading = true
+        withAnimation(.easeIn(duration: 0.3)) {
+            isLoading = true
+        }
         
-        // Yeni oyun oluşturma işlemini arka planda yap
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Yeni oyun verilerini hazırla
-            let newNotes = Array(repeating: Array(repeating: [Int](), count: 9), count: 9)
-            
-            // UI güncellemelerini ana thread'de yap
-            DispatchQueue.main.async {
-                // Önce UI güncellemelerini yap
-                self.notes = newNotes
-                self.resetTimer()
+        // Yükleme ekranını göstermek için kısa bir gecikme
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // Yeni oyun oluşturma işlemini arka planda yap
+            DispatchQueue.global(qos: .userInitiated).async {
+                // Yeni oyun verilerini hazırla
+                let newNotes = Array(repeating: Array(repeating: [Int](), count: 9), count: 9)
                 
-                // Sonra model güncellemesini yap
-                self.sudokuModel.generateNewGame()
-                self.isLoading = false
+                // Sudoku çözümünü oluştur (en yoğun işlem)
+                autoreleasepool {
+                    self.sudokuModel.prepareNewGame()
+                }
+                
+                // UI güncellemelerini ana thread'de yap
+                DispatchQueue.main.async {
+                    // Önce UI güncellemelerini yap
+                    self.notes = newNotes
+                    self.resetTimer()
+                    self.completedNumbers = []
+                    
+                    // Sonra model güncellemesini tamamla
+                    self.sudokuModel.finalizeNewGame()
+                    
+                    // Kısa bir gecikme ile yükleme ekranını kapat (daha iyi kullanıcı deneyimi için)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            self.isLoading = false
+                        }
+                    }
+                }
             }
         }
     }
@@ -858,7 +878,6 @@ struct SudokuCellView: View {
                             number == selectedNumber ? 
                             (isDarkMode ? themeColor.opacity(0.9) : themeColor.opacity(0.8)) : 
                             (isDarkMode ? .white.opacity(0.6) : .black.opacity(0.6))
-                        )
                         .frame(width: notesItemSize, height: notesItemSize)
                 } else {
                     Color.clear
@@ -1249,35 +1268,107 @@ struct LoadingView: View {
     let themeColor: Color
     let isDarkMode: Bool
     @State private var isAnimating = false
+    @State private var rotationAngle = 0.0
+    @State private var scaleEffect = 1.0
+    @State private var opacity = 0.7
+    @State private var progressValue = 0.0
     
     var body: some View {
-        VStack {
-            Text("Sudoku Hazırlanıyor...")
-                .font(.title)
-                .foregroundColor(isDarkMode ? .white : themeColor)
-                .padding()
+        ZStack {
+            // Arka plan efekti
+            RoundedRectangle(cornerRadius: 20)
+                .fill(isDarkMode ? 
+                      Color.black.opacity(0.8) : 
+                      Color.white.opacity(0.9))
+                .shadow(color: themeColor.opacity(0.3), radius: 15, x: 0, y: 5)
+                .frame(width: 280, height: 200)
             
-            Circle()
-                .stroke(lineWidth: 4)
-                .frame(width: 50, height: 50)
-                .foregroundColor(themeColor.opacity(0.3))
-                .overlay(
+            VStack(spacing: 25) {
+                Text("Sudoku Hazırlanıyor...")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(isDarkMode ? .white : themeColor)
+                    .shadow(color: themeColor.opacity(0.3), radius: 2, x: 0, y: 1)
+                    .scaleEffect(scaleEffect)
+                    .opacity(opacity)
+                
+                ZStack {
+                    // Arka plan dairesi
+                    Circle()
+                        .stroke(lineWidth: 6)
+                        .frame(width: 70, height: 70)
+                        .foregroundColor(themeColor.opacity(0.2))
+                    
+                    // Dönen daire
                     Circle()
                         .trim(from: 0, to: 0.7)
-                        .stroke(themeColor, lineWidth: 4)
-                        .rotationEffect(Angle(degrees: isAnimating ? 360 : 0))
-                        .animation(Animation.linear(duration: 1).repeatForever(autoreverses: false), value: isAnimating)
-                )
-                .onAppear {
-                    isAnimating = true
+                        .stroke(
+                            AngularGradient(
+                                gradient: Gradient(colors: [themeColor.opacity(0.5), themeColor]),
+                                center: .center
+                            ),
+                            style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                        )
+                        .frame(width: 70, height: 70)
+                        .rotationEffect(Angle(degrees: rotationAngle))
+                    
+                    // İç daire
+                    Circle()
+                        .fill(themeColor.opacity(0.3))
+                        .frame(width: 20, height: 20)
+                        .scaleEffect(scaleEffect)
+                    
+                    // Sudoku ızgara simgesi
+                    ZStack {
+                        Rectangle()
+                            .fill(Color.clear)
+                            .frame(width: 30, height: 30)
+                            .overlay(
+                                Grid(horizontalSpacing: 2, verticalSpacing: 2) {
+                                    ForEach(0..<3, id: \.self) { _ in
+                                        GridRow {
+                                            ForEach(0..<3, id: \.self) { _ in
+                                                RoundedRectangle(cornerRadius: 1)
+                                                    .fill(isDarkMode ? .white : themeColor)
+                                                    .opacity(0.8)
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                    }
+                    .scaleEffect(0.8)
                 }
+                
+                // İlerleme göstergesi
+                ProgressView(value: progressValue, total: 1.0)
+                    .progressViewStyle(LinearProgressViewStyle(tint: themeColor))
+                    .frame(width: 200)
+                    .scaleEffect(0.8)
+            }
+            .padding(30)
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 15)
-                .fill(isDarkMode ? Color.black.opacity(0.7) : Color.white.opacity(0.9))
-                .shadow(color: Color.black.opacity(0.2), radius: 10)
-        )
+        .onAppear {
+            // Performans iyileştirmeleri için
+            DispatchQueue.main.async {
+                // Animasyonları başlat
+                withAnimation(Animation.linear(duration: 2).repeatForever(autoreverses: false)) {
+                    rotationAngle = 360
+                }
+                
+                withAnimation(Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                    scaleEffect = 1.1
+                    opacity = 1.0
+                }
+                
+                // İlerleme çubuğu animasyonu
+                withAnimation(Animation.easeInOut(duration: 2.5)) {
+                    progressValue = 1.0
+                }
+                
+                isAnimating = true
+            }
+        }
+        .drawingGroup() // Metal hızlandırma için
     }
 }
 

@@ -108,19 +108,25 @@ class SudokuModel: ObservableObject {
         saveGameState()
     }
     
-    func generateNewGame() {
+    // Yeni oyun hazırlığı - arka planda çalıştırılacak ağır işlemler
+    func prepareNewGame() {
         // Önbelleği temizle
         validMovesCache.removeAll()
         cellEditabilityCache.removeAll()
         
-        // Yeni oyun oluştur
+        // Yeni çözüm oluştur (en yoğun işlem)
         generateSolution()
+        
+        // Oyun durumunu sıfırla
         selectedCell = nil
         isShaking = false
         gameTime = 0
         mistakes = 0
         isGameComplete = false
-        
+    }
+    
+    // Yeni oyunu tamamla - UI thread'de çalıştırılacak hızlı işlemler
+    func finalizeNewGame() {
         // Zorluk seviyesine göre ipuçlarını belirle
         var hints: Int
         
@@ -159,6 +165,12 @@ class SudokuModel: ObservableObject {
         
         // Yeni oyun durumunu kaydet
         saveGameState()
+    }
+    
+    // Eski generateNewGame fonksiyonu - geriye dönük uyumluluk için
+    func generateNewGame() {
+        prepareNewGame()
+        finalizeNewGame()
     }
     
     private func startTimer() {
