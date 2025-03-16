@@ -207,7 +207,12 @@ struct ContentView: View {
                             // Geri alma butonu
                             Button(action: {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                                    sudokuModel.undoLastMove()
+                                    // Geri alma işlemini arka planda yap
+                                    DispatchQueue.global(qos: .userInitiated).async {
+                                        DispatchQueue.main.async {
+                                            sudokuModel.undoLastMove()
+                                        }
+                                    }
                                 }
                             }) {
                                 HStack {
@@ -312,7 +317,12 @@ struct ContentView: View {
                                         } else if sudokuModel.grid[selected.row][selected.col] == nil {
                                             // Normal mod, sayıyı yerleştir
                                             withAnimation {
-                                                sudokuModel.placeNumber(number)
+                                                // Sayı yerleştirme işlemini arka planda yap
+                                                DispatchQueue.global(qos: .userInitiated).async {
+                                                    DispatchQueue.main.async {
+                                                        sudokuModel.placeNumber(number)
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -342,7 +352,12 @@ struct ContentView: View {
                                 } else if sudokuModel.grid[selected.row][selected.col] != nil {
                                     // Normal modda hücreyi temizle
                                     withAnimation {
-                                        sudokuModel.clearCell(at: selected.row, col: selected.col)
+                                        // Silme işlemini arka planda yap
+                                        DispatchQueue.global(qos: .userInitiated).async {
+                                            DispatchQueue.main.async {
+                                                sudokuModel.clearCell(at: selected.row, col: selected.col)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -530,13 +545,18 @@ struct ContentView: View {
         
         // Yeni oyun oluşturma işlemini arka planda yap
         DispatchQueue.global(qos: .userInitiated).async {
-            sudokuModel.generateNewGame()
-            notes = Array(repeating: Array(repeating: [], count: 9), count: 9)
+            // Yeni oyun verilerini hazırla
+            let newNotes = Array(repeating: Array(repeating: [Int](), count: 9), count: 9)
             
             // UI güncellemelerini ana thread'de yap
             DispatchQueue.main.async {
-                resetTimer()
-                isLoading = false
+                // Önce UI güncellemelerini yap
+                self.notes = newNotes
+                self.resetTimer()
+                
+                // Sonra model güncellemesini yap
+                self.sudokuModel.generateNewGame()
+                self.isLoading = false
             }
         }
     }

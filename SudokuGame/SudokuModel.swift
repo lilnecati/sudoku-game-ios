@@ -48,8 +48,14 @@ class SudokuModel: ObservableObject {
         // Boş grid oluştur
         grid = Array(repeating: Array(repeating: nil, count: 9), count: 9)
         
-        // Base sudoku çözümü oluştur
-        generateSolution()
+        // Çözüm oluşturma işlemini ana thread'de yapmak için kontrol
+        if !Thread.isMainThread {
+            DispatchQueue.main.sync {
+                self.generateSolution()
+            }
+        } else {
+            generateSolution()
+        }
         
         // Çözümü kopyala
         for row in 0..<9 {
@@ -78,6 +84,11 @@ class SudokuModel: ObservableObject {
         // Yeni oyun başladığında hamle geçmişini temizle
         moveHistory.removeAll()
         canUndo = false
+        
+        // Hataları ve süreyi sıfırla
+        mistakes = 0
+        gameTime = 0
+        isGameComplete = false
     }
     
     // Daha hızlı bir çözüm oluşturma algoritması
@@ -237,6 +248,14 @@ class SudokuModel: ObservableObject {
     }
     
     func placeNumber(_ number: Int) {
+        // Ana thread kontrolü
+        if !Thread.isMainThread {
+            DispatchQueue.main.async {
+                self.placeNumber(number)
+            }
+            return
+        }
+        
         guard let selectedCell = selectedCell else { return }
         
         // Başlangıçta dolu olan hücreleri değiştirmeye izin verme
@@ -264,6 +283,14 @@ class SudokuModel: ObservableObject {
     
     // Hücreyi temizleme fonksiyonu
     func clearCell(at row: Int, col: Int) {
+        // Ana thread kontrolü
+        if !Thread.isMainThread {
+            DispatchQueue.main.async {
+                self.clearCell(at: row, col: col)
+            }
+            return
+        }
+        
         // Başlangıçta dolu olan hücreleri değiştirmeye izin verme
         if initialGrid[row][col] != nil {
             return
@@ -281,6 +308,14 @@ class SudokuModel: ObservableObject {
     
     // Son hamleyi geri alma fonksiyonu
     func undoLastMove() {
+        // Ana thread kontrolü
+        if !Thread.isMainThread {
+            DispatchQueue.main.async {
+                self.undoLastMove()
+            }
+            return
+        }
+        
         guard !moveHistory.isEmpty else { return }
         
         let lastMove = moveHistory.removeLast()
