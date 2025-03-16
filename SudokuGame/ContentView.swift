@@ -7,6 +7,58 @@
 
 import SwiftUI
 
+// Konfeti efekti için yardımcı yapı
+struct ConfettiView: View {
+    @State private var isAnimating = false
+    let colors: [Color] = [.red, .blue, .green, .yellow, .purple, .orange]
+    let confettiCount = 100
+    
+    var body: some View {
+        ZStack {
+            ForEach(0..<confettiCount, id: \.self) { index in
+                ConfettiPiece(color: colors[index % colors.count], isAnimating: $isAnimating)
+            }
+        }
+        .onAppear {
+            isAnimating = true
+        }
+    }
+}
+
+struct ConfettiPiece: View {
+    let color: Color
+    @Binding var isAnimating: Bool
+    @State private var xPosition: CGFloat = 0
+    @State private var yPosition: CGFloat = -100
+    @State private var rotation: Double = 0
+    
+    var body: some View {
+        Rectangle()
+            .fill(color)
+            .frame(width: CGFloat.random(in: 5...10), height: CGFloat.random(in: 5...10))
+            .position(x: xPosition, y: yPosition)
+            .rotationEffect(.degrees(rotation))
+            .opacity(yPosition > UIScreen.main.bounds.height * 0.8 ? 0 : 1)
+            .onAppear {
+                withAnimation(Animation.linear(duration: Double.random(in: 2...4)).repeatForever(autoreverses: false)) {
+                    self.xPosition = CGFloat.random(in: 0...UIScreen.main.bounds.width)
+                    self.yPosition = UIScreen.main.bounds.height + 50
+                    self.rotation = Double.random(in: 0...360) * 5
+                }
+            }
+    }
+}
+
+// Rozet yapısı
+struct Badge: Identifiable {
+    let id = UUID()
+    let name: String
+    let description: String
+    let icon: String
+    let color: Color
+    var isEarned: Bool = false
+}
+
 struct ContentView: View {
     @StateObject private var sudokuModel = SudokuModel()
     @State private var showingDifficultyPicker = false
@@ -16,6 +68,15 @@ struct ContentView: View {
     @State private var animateNewGame = false
     @State private var presentedSheet: SheetType? = nil
     @State private var dragOffset: CGFloat = 0
+    @State private var showConfetti = false
+    @State private var showBadgeEarned = false
+    @State private var earnedBadge: Badge? = nil
+    @State private var badges: [Badge] = [
+        Badge(name: "Hızlı Çözücü", description: "Sudoku'yu 5 dakikadan kısa sürede çöz", icon: "bolt.fill", color: .yellow),
+        Badge(name: "Hatasız", description: "Hiç hata yapmadan bir Sudoku çöz", icon: "checkmark.seal.fill", color: .green),
+        Badge(name: "Zor Seviye", description: "Zor seviyede bir Sudoku çöz", icon: "star.fill", color: .orange),
+        Badge(name: "Sudoku Ustası", description: "10 Sudoku çöz", icon: "crown.fill", color: .purple)
+    ]
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.presentationMode) var presentationMode
     
@@ -180,6 +241,7 @@ struct ContentView: View {
                 }
                 .alert("Tebrikler!", isPresented: .constant(sudokuModel.isGameComplete)) {
                     Button("Yeni Oyun") {
+                        checkForBadges()
                         sudokuModel.generateNewGame()
                         sudokuModel.gameTime = 0
                         sudokuModel.mistakes = 0
@@ -188,6 +250,22 @@ struct ContentView: View {
                 } message: {
                     Text("Sudoku'yu \(formatTime(sudokuModel.gameTime)) sürede, \(sudokuModel.mistakes) hata ile tamamladınız!")
                 }
+                .overlay(
+                    ZStack {
+                        if showConfetti {
+                            ConfettiView()
+                                .ignoresSafeArea()
+                        }
+                        
+                        if showBadgeEarned, let badge = earnedBadge {
+                            BadgeEarnedView(badge: badge, onDismiss: {
+                                withAnimation {
+                                    showBadgeEarned = false
+                                }
+                            })
+                        }
+                    }
+                )
                 .sheet(item: $presentedSheet) { sheetType in
                     switch sheetType {
                     case .difficulty:
@@ -258,6 +336,44 @@ struct ContentView: View {
         let minutes = seconds / 60
         let remainingSeconds = seconds % 60
         return String(format: "%02d:%02d", minutes, remainingSeconds)
+    }
+    
+    private func checkForBadges() {
+        // Oyun tamamlandığında rozet kontrolü
+        if sudokuModel.isGameComplete {
+            // Konfeti efektini göster
+            withAnimation {
+                showConfetti = true
+            }
+            
+            // 5 dakikadan kısa sürede çözüldü mü?
+            if sudokuModel.gameTime < 300 && !badges[0].isEarned {
+                badges[0].isEarned = true
+                earnedBadge = badges[0]
+                showBadgeEarned = true
+            }
+            
+            // Hiç hata yapılmadan çözüldü mü?
+            if sudokuModel.mistakes == 0 && !badges[1].isEarned {
+                badges[1].isEarned = true
+                earnedBadge = badges[1]
+                showBadgeEarned = true
+            }
+            
+            // Zor seviyede çözüldü mü?
+            if sudokuModel.difficulty == .hard && !badges[2].isEarned {
+                badges[2].isEarned = true
+                earnedBadge = badges[2]
+                showBadgeEarned = true
+            }
+            
+            // Konfeti efektini 3 saniye sonra kapat
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                withAnimation {
+                    showConfetti = false
+                }
+            }
+        }
     }
 }
 
@@ -431,6 +547,7 @@ struct NumberPadView: View {
     @ObservedObject var sudokuModel: SudokuModel
     let colorScheme: ColorScheme
     @State private var pressedNumber: Int? = nil
+    @State private var animateSuccess = false
     
     var body: some View {
         VStack(spacing: 10) {
@@ -441,10 +558,22 @@ struct NumberPadView: View {
                             pressedNumber = number
                         }
                         
-                        sudokuModel.placeNumber(number)
+                        let success = sudokuModel.placeNumber(number)
+                        
+                        // Başarılı yerleştirme animasyonu
+                        if success {
+                            withAnimation {
+                                animateSuccess = true
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                withAnimation {
+                                    animateSuccess = false
+                                }
+                            }
+                        }
                         
                         // Haptic feedback
-                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        let generator = UIImpactFeedbackGenerator(style: success ? .medium : .light)
                         generator.impactOccurred()
                         
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -497,6 +626,13 @@ struct NumberPadView: View {
                             )
                             .foregroundColor(.white)
                             .scaleEffect(pressedNumber == number ? 0.9 : 1.0)
+                            .overlay(
+                                Circle()
+                                    .fill(Color.green)
+                                    .scaleEffect(animateSuccess && pressedNumber == number ? 1.5 : 0.01)
+                                    .opacity(animateSuccess && pressedNumber == number ? 0 : 0.5)
+                                    .animation(.easeOut(duration: 0.5), value: animateSuccess)
+                            )
                     }
                 }
             }
@@ -826,6 +962,94 @@ struct ContentView_Previews: PreviewProvider {
             ContentView()
                 .preferredColorScheme(.dark)
                 .previewDisplayName("Koyu Mod")
+        }
+    }
+}
+
+// Rozet kazanıldı görünümü
+struct BadgeEarnedView: View {
+    let badge: Badge
+    let onDismiss: () -> Void
+    @State private var scale: CGFloat = 0.5
+    @State private var opacity: Double = 0
+    
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.7)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    dismiss()
+                }
+            
+            VStack(spacing: 20) {
+                Text("Yeni Rozet Kazandınız!")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                Image(systemName: badge.icon)
+                    .font(.system(size: 80))
+                    .foregroundColor(badge.color)
+                    .padding()
+                    .background(
+                        Circle()
+                            .fill(badge.color.opacity(0.2))
+                            .frame(width: 150, height: 150)
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(badge.color, lineWidth: 3)
+                            .frame(width: 150, height: 150)
+                    )
+                
+                Text(badge.name)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                Text(badge.description)
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.white.opacity(0.8))
+                
+                Button(action: {
+                    dismiss()
+                }) {
+                    Text("Harika!")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 30)
+                        .background(badge.color)
+                        .cornerRadius(25)
+                }
+                .padding(.top, 10)
+            }
+            .padding(30)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.gray.opacity(0.2))
+                    .shadow(color: badge.color.opacity(0.5), radius: 20, x: 0, y: 0)
+            )
+            .scaleEffect(scale)
+            .opacity(opacity)
+            .onAppear {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    scale = 1.0
+                    opacity = 1.0
+                }
+            }
+        }
+    }
+    
+    private func dismiss() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            scale = 0.5
+            opacity = 0
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            onDismiss()
         }
     }
 }
