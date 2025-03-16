@@ -363,6 +363,18 @@ struct SudokuGridView: View {
                 sudokuModel.selectedCell = (row, col)
             }
         }) {
+            cellContent(value: value, isSelected: isSelected, isInSameRowOrCol: isInSameRowOrCol, 
+                       isInSameBlock: isInSameBlock, isInitialValue: isInitialValue)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private func cellContent(value: Int?, isSelected: Bool, isInSameRowOrCol: Bool, 
+                            isInSameBlock: Bool, isInitialValue: Bool) -> some View {
+        Text(value.map(String.init) ?? "")
+            .font(.system(size: 26, weight: .bold, design: .rounded))
+            .frame(width: 45, height: 45)
+            .background(cellBackground(isSelected: isSelected, isInSameRowOrCol: isInSameRowOrCol, isInSameBlock: isInSameBlock))
             Text(value.map(String.init) ?? "")
                 .font(.system(size: 26, weight: .bold, design: .rounded))
                 .frame(width: 45, height: 45)
