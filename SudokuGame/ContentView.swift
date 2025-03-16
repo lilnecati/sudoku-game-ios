@@ -105,460 +105,36 @@ struct ContentView: View {
         NavigationView {
             ZStack {
                 // Geliştirilmiş arka plan
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        isDarkMode ? Color.black : Color.white,
-                        isDarkMode ? themeColor.opacity(0.2) : themeColor.opacity(0.1),
-                        isDarkMode ? themeSecondaryColor.opacity(0.15) : themeSecondaryColor.opacity(0.08)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .edgesIgnoringSafeArea(.all)
-                
-                // Arka plan deseni
-                ZStack {
-                    ForEach(0..<9) { row in
-                        ForEach(0..<9) { col in
-                            Rectangle()
-                                .stroke(themeColor.opacity(0.05), lineWidth: 1)
-                                .frame(width: UIScreen.main.bounds.width / 9, height: UIScreen.main.bounds.width / 9)
-                                .offset(x: CGFloat(col - 4) * UIScreen.main.bounds.width / 9,
-                                        y: CGFloat(row - 4) * UIScreen.main.bounds.width / 9)
-                        }
-                    }
-                }
-                .rotationEffect(.degrees(15))
-                .opacity(0.5)
+                backgroundView
                 
                 if isLoading {
                     LoadingView(themeColor: themeColor, isDarkMode: isDarkMode)
                 } else {
                     VStack(spacing: 10) {
                         // Geliştirilmiş üst bilgi çubuğu
-                        HStack {
-                            Button(action: {
-                                // Ana menüye dön
-                                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                                    stopTimer()
-                                    showingWelcomeScreen = true
-                                }
-                            }) {
-                                HStack(spacing: 5) {
-                                    Image(systemName: "house.fill")
-                                        .font(.system(size: UIScreen.main.bounds.width >= 390 ? 18 : 16))
-                                    Text("Ana Sayfa")
-                                        .font(.system(size: UIScreen.main.bounds.width >= 390 ? 14 : 12, weight: .medium))
-                                }
-                                .foregroundColor(isDarkMode ? .white : .black)
-                                .padding(.vertical, 8)
-                                .padding(.horizontal, 12)
-                                .background(
-                                    Capsule()
-                                        .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
-                                        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-                                )
-                            }
-                            .padding(.leading, horizontalPadding)
-                            
-                            Spacer()
-                            
-                            // Geliştirilmiş başlık
-                            VStack(spacing: 0) {
-                                Text("SUDOKU")
-                                    .font(.system(size: UIScreen.main.bounds.width < 400 ? 26 : 30, weight: .bold, design: .rounded))
-                                    .foregroundColor(isDarkMode ? .white : themeColor)
-                                
-                                Text(sudokuModel.difficulty.rawValue)
-                                    .font(.system(size: UIScreen.main.bounds.width < 400 ? 12 : 14, weight: .medium, design: .rounded))
-                                    .foregroundColor(isDarkMode ? themeColor.opacity(0.8) : themeColor.opacity(0.7))
-                            }
-                            
-                            Spacer()
-                            
-                            Button(action: {
-                                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                                    showingSettings.toggle()
-                                }
-                            }) {
-                                HStack(spacing: 5) {
-                                    Text("Ayarlar")
-                                        .font(.system(size: UIScreen.main.bounds.width >= 390 ? 14 : 12, weight: .medium))
-                                    Image(systemName: "gear")
-                                        .font(.system(size: UIScreen.main.bounds.width >= 390 ? 18 : 16))
-                                }
-                                .foregroundColor(isDarkMode ? .white : .black)
-                                .padding(.vertical, 8)
-                                .padding(.horizontal, 12)
-                                .background(
-                                    Capsule()
-                                        .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
-                                        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-                                )
-                            }
-                            .padding(.trailing, horizontalPadding)
-                        }
-                        .padding(.top, 10)
+                        topBarView
                         
                         // Geliştirilmiş oyun bilgileri
-                        HStack(spacing: UIScreen.main.bounds.width >= 390 ? 15 : 8) {
-                            // Süre
-                            Button(action: {
-                                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                                    showingStats = true
-                                }
-                            }) {
-                                HStack {
-                                    Image(systemName: "clock.fill")
-                                        .foregroundColor(themeColor)
-                                    Text(formatTime(sudokuModel.gameTime))
-                                        .foregroundColor(isDarkMode ? .white : .black)
-                                        .font(.system(size: buttonFontSize, weight: .medium))
-                                }
-                                .padding(.vertical, 10)
-                                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
-                                        .shadow(color: themeColor.opacity(0.3), radius: 3, x: 0, y: 2)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .stroke(themeColor.opacity(0.3), lineWidth: 1.5)
-                                        )
-                                )
-                            }
-                            
-                            // Hatalar
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.red)
-                                Text("\(sudokuModel.mistakes)")
-                                    .foregroundColor(isDarkMode ? .white : .black)
-                                    .font(.system(size: buttonFontSize, weight: .medium))
-                            }
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
-                                    .shadow(color: Color.red.opacity(0.3), radius: 3, x: 0, y: 2)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.red.opacity(0.3), lineWidth: 1.5)
-                                    )
-                            )
-                            
-                            // Zorluk seviyesi
-                            Button(action: {
-                                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                                    showingDifficultyPicker = true
-                                }
-                            }) {
-                                HStack {
-                                    Image(systemName: "slider.horizontal.3")
-                                        .foregroundColor(themeSecondaryColor)
-                                    Text("Zorluk")
-                                        .foregroundColor(isDarkMode ? .white : .black)
-                                        .font(.system(size: buttonFontSize, weight: .medium))
-                                }
-                                .padding(.vertical, 10)
-                                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
-                                        .shadow(color: themeSecondaryColor.opacity(0.3), radius: 3, x: 0, y: 2)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .stroke(themeSecondaryColor.opacity(0.3), lineWidth: 1.5)
-                                        )
-                                )
-                            }
-                        }
-                        .padding(.horizontal, horizontalPadding)
-                        .padding(.top, 5)
+                        gameInfoView
                         
                         // Geliştirilmiş aksiyon butonları
-                        HStack(spacing: UIScreen.main.bounds.width >= 390 ? 10 : 6) {
-                            // Yeni oyun butonu
-                            Button(action: {
-                                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                                    startNewGame()
-                                }
-                            }) {
-                                HStack {
-                                    Image(systemName: "arrow.clockwise")
-                                        .font(.system(size: buttonFontSize))
-                                    Text("Yeni Oyun")
-                                        .font(.system(size: buttonFontSize, weight: .semibold))
-                                }
-                                .foregroundColor(.white)
-                                .padding(.vertical, 12)
-                                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
-                                .background(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    .shadow(color: themeColor.opacity(0.5), radius: 4, x: 0, y: 3)
-                                )
-                            }
-                            
-                            // Geri alma butonu
-                            Button(action: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                                    // Geri alma işlemini arka planda yap
-                                    DispatchQueue.global(qos: .userInitiated).async {
-                                        DispatchQueue.main.async {
-                                            sudokuModel.undoLastMove()
-                                        }
-                                    }
-                                }
-                            }) {
-                                HStack {
-                                    Image(systemName: "arrow.uturn.backward")
-                                        .font(.system(size: buttonFontSize))
-                                    Text("Geri Al")
-                                        .font(.system(size: buttonFontSize, weight: .semibold))
-                                }
-                                .foregroundColor(.white)
-                                .padding(.vertical, 12)
-                                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
-                                .background(
-                                    sudokuModel.canUndo ?
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [themeColor.opacity(0.8), themeColor]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    .shadow(color: themeColor.opacity(0.5), radius: 4, x: 0, y: 3) :
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [Color.gray.opacity(0.8), Color.gray]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    .shadow(color: Color.gray.opacity(0.3), radius: 2, x: 0, y: 2)
-                                )
-                            }
-                            .disabled(!sudokuModel.canUndo)
-                            
-                            // İpucu butonu
-                            Button(action: {
-                                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                                    showHint()
-                                }
-                            }) {
-                                HStack {
-                                    Image(systemName: "lightbulb.fill")
-                                        .font(.system(size: buttonFontSize))
-                                    Text("İpucu")
-                                        .font(.system(size: buttonFontSize, weight: .semibold))
-                                }
-                                .foregroundColor(.white)
-                                .padding(.vertical, 12)
-                                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
-                                .background(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [themeSecondaryColor.opacity(0.8), themeSecondaryColor]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    .shadow(color: themeSecondaryColor.opacity(0.5), radius: 4, x: 0, y: 3)
-                                )
-                            }
-                        }
-                        .padding(.horizontal, horizontalPadding)
-                        .padding(.top, 5)
+                        actionButtonsView
                         
                         // Not modu butonu
-                        Button(action: {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                                noteMode.toggle()
-                            }
-                        }) {
-                            HStack {
-                                Image(systemName: noteMode ? "pencil.circle.fill" : "pencil.circle")
-                                    .font(.system(size: buttonFontSize + 2))
-                                Text("Not Modu")
-                                    .font(.system(size: buttonFontSize, weight: noteMode ? .semibold : .medium))
-                            }
-                            .foregroundColor(noteMode ? .white : (isDarkMode ? .white : .black))
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 20 : 15)
-                            .background(
-                                noteMode ?
-                                LinearGradient(
-                                    gradient: Gradient(colors: [themeColor.opacity(0.8), themeColor]),
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                .shadow(color: themeColor.opacity(0.5), radius: 3, x: 0, y: 2) :
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(isDarkMode ? Color.gray.opacity(0.3) : Color.gray.opacity(0.1))
-                                    .shadow(color: Color.gray.opacity(0.2), radius: 2, x: 0, y: 1)
-                            )
-                        }
-                        .padding(.horizontal, horizontalPadding)
-                        .padding(.top, 5)
+                        noteModeButton
                         
                         Spacer()
                         
                         // Geliştirilmiş Sudoku ızgarası
-                        VStack(spacing: 0) {
-                            ForEach(0..<3) { blockRow in
-                                HStack(spacing: 0) {
-                                    ForEach(0..<3) { blockCol in
-                                        SudokuBlock(
-                                            blockRow: blockRow,
-                                            blockCol: blockCol,
-                                            sudokuModel: sudokuModel,
-                                            selectedNumber: $selectedNumber,
-                                            notes: $notes,
-                                            themeColor: themeColor,
-                                            isDarkMode: isDarkMode
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
-                                .shadow(color: isDarkMode ? Color.black.opacity(0.5) : Color.gray.opacity(0.3), radius: 15, x: 0, y: 8)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 3
-                                )
-                        )
-                        .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 5 : 2)
-                        .scaleEffect(sudokuModel.shakeGrid ? 0.95 : 1.0)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: sudokuModel.shakeGrid)
-                        .frame(
-                            maxWidth: min(UIScreen.main.bounds.width - 8, UIScreen.main.bounds.height * 0.8),
-                            maxHeight: min(UIScreen.main.bounds.width - 8, UIScreen.main.bounds.height * 0.8)
-                        )
-                        .aspectRatio(1, contentMode: .fit)
-                        .rotation3DEffect(
-                            .degrees(sudokuModel.isGameComplete ? 360 : 0),
-                            axis: (x: 0, y: 1, z: 0),
-                            anchor: .center,
-                            anchorZ: 0,
-                            perspective: 0.3
-                        )
-                        .animation(
-                            sudokuModel.isGameComplete ?
-                            .spring(response: 0.6, dampingFraction: 0.6).delay(0.1) :
-                            .spring(response: 0.3, dampingFraction: 0.6),
-                            value: sudokuModel.isGameComplete
-                        )
+                        sudokuGridView
                         
                         Spacer()
                         
                         // Geliştirilmiş rakam seçici
-                        HStack(spacing: 4) {
-                            ForEach(1...9, id: \.self) { number in
-                                Button(action: {
-                                    if let selected = sudokuModel.selectedCell {
-                                        if noteMode {
-                                            // Not modu aktifse, notu ekle veya çıkar
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                                                toggleNote(number: number, at: selected)
-                                            }
-                                        } else if sudokuModel.grid[selected.row][selected.col] == nil {
-                                            // Normal mod, sayıyı yerleştir
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                                                // Sayı yerleştirme işlemini arka planda yap
-                                                DispatchQueue.global(qos: .userInitiated).async {
-                                                    DispatchQueue.main.async {
-                                                        sudokuModel.placeNumber(number)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                                        selectedNumber = number
-                                    }
-                                }) {
-                                    Text("\(number)")
-                                        .font(.system(size: UIScreen.main.bounds.width >= 390 ? 28 : 24, weight: .bold))
-                                        .frame(width: numberButtonSize, height: numberButtonSize)
-                                        .background(
-                                            selectedNumber == number ?
-                                            LinearGradient(
-                                                gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                            .clipShape(RoundedRectangle(cornerRadius: 10)) :
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
-                                        )
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .stroke(themeColor.opacity(0.3), lineWidth: 1)
-                                        )
-                                        .foregroundColor(selectedNumber == number ? .white : (isDarkMode ? .white : .black))
-                                        .shadow(color: selectedNumber == number ? themeColor.opacity(0.5) : Color.gray.opacity(0.2), radius: 3, x: 0, y: 2)
-                                        .scaleEffect(selectedNumber == number ? 1.05 : 1.0)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                            }
-                        }
-                        .padding(.horizontal, horizontalPadding)
-                        .padding(.vertical, 10)
+                        numberPickerView
                         
                         // Geliştirilmiş silme butonu
-                        Button(action: {
-                            if let selected = sudokuModel.selectedCell {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                                    if noteMode {
-                                        // Not modunda tüm notları temizle
-                                        notes[selected.row][selected.col] = []
-                                    } else if sudokuModel.grid[selected.row][selected.col] != nil {
-                                        // Normal modda hücreyi temizle
-                                        // Silme işlemini arka planda yap
-                                        DispatchQueue.global(qos: .userInitiated).async {
-                                            DispatchQueue.main.async {
-                                                sudokuModel.clearCell(at: selected.row, col: selected.col)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }) {
-                            HStack {
-                                Image(systemName: "delete.left.fill")
-                                    .font(.system(size: UIScreen.main.bounds.width >= 390 ? 18 : 16))
-                                Text("Sil")
-                                    .font(.system(size: UIScreen.main.bounds.width >= 390 ? 16 : 14, weight: .semibold))
-                            }
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 25 : 20)
-                            .background(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [Color.red.opacity(0.8), Color.red]),
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                            )
-                            .foregroundColor(.white)
-                            .shadow(color: Color.red.opacity(0.4), radius: 3, x: 0, y: 2)
-                        }
-                        .padding(.bottom, 10)
+                        deleteButton
                     }
                 }
             }
@@ -610,6 +186,483 @@ struct ContentView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
+    }
+    
+    // MARK: - Alt görünümler
+    
+    private var backgroundView: some View {
+        ZStack {
+            // Arka plan gradyanı
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    isDarkMode ? Color.black : Color.white,
+                    isDarkMode ? themeColor.opacity(0.2) : themeColor.opacity(0.1),
+                    isDarkMode ? themeSecondaryColor.opacity(0.15) : themeSecondaryColor.opacity(0.08)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .edgesIgnoringSafeArea(.all)
+            
+            // Arka plan deseni
+            ZStack {
+                ForEach(0..<9) { row in
+                    ForEach(0..<9) { col in
+                        Rectangle()
+                            .stroke(themeColor.opacity(0.05), lineWidth: 1)
+                            .frame(width: UIScreen.main.bounds.width / 9, height: UIScreen.main.bounds.width / 9)
+                            .offset(x: CGFloat(col - 4) * UIScreen.main.bounds.width / 9,
+                                    y: CGFloat(row - 4) * UIScreen.main.bounds.width / 9)
+                    }
+                }
+            }
+            .rotationEffect(.degrees(15))
+            .opacity(0.5)
+        }
+    }
+    
+    private var topBarView: some View {
+        HStack {
+            Button(action: {
+                // Ana menüye dön
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    stopTimer()
+                    showingWelcomeScreen = true
+                }
+            }) {
+                HStack(spacing: 5) {
+                    Image(systemName: "house.fill")
+                        .font(.system(size: UIScreen.main.bounds.width >= 390 ? 18 : 16))
+                    Text("Ana Sayfa")
+                        .font(.system(size: UIScreen.main.bounds.width >= 390 ? 14 : 12, weight: .medium))
+                }
+                .foregroundColor(isDarkMode ? .white : .black)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(
+                    Capsule()
+                        .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
+                        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                )
+            }
+            .padding(.leading, horizontalPadding)
+            
+            Spacer()
+            
+            // Geliştirilmiş başlık
+            VStack(spacing: 0) {
+                Text("SUDOKU")
+                    .font(.system(size: UIScreen.main.bounds.width < 400 ? 26 : 30, weight: .bold, design: .rounded))
+                    .foregroundColor(isDarkMode ? .white : themeColor)
+                
+                Text(sudokuModel.difficulty.rawValue)
+                    .font(.system(size: UIScreen.main.bounds.width < 400 ? 12 : 14, weight: .medium, design: .rounded))
+                    .foregroundColor(isDarkMode ? themeColor.opacity(0.8) : themeColor.opacity(0.7))
+            }
+            
+            Spacer()
+            
+            Button(action: {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    showingSettings.toggle()
+                }
+            }) {
+                HStack(spacing: 5) {
+                    Text("Ayarlar")
+                        .font(.system(size: UIScreen.main.bounds.width >= 390 ? 14 : 12, weight: .medium))
+                    Image(systemName: "gear")
+                        .font(.system(size: UIScreen.main.bounds.width >= 390 ? 18 : 16))
+                }
+                .foregroundColor(isDarkMode ? .white : .black)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(
+                    Capsule()
+                        .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
+                        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                )
+            }
+            .padding(.trailing, horizontalPadding)
+        }
+        .padding(.top, 10)
+    }
+    
+    private var gameInfoView: some View {
+        HStack(spacing: UIScreen.main.bounds.width >= 390 ? 15 : 8) {
+            // Süre
+            Button(action: {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    showingStats = true
+                }
+            }) {
+                HStack {
+                    Image(systemName: "clock.fill")
+                        .foregroundColor(themeColor)
+                    Text(formatTime(sudokuModel.gameTime))
+                        .foregroundColor(isDarkMode ? .white : .black)
+                        .font(.system(size: buttonFontSize, weight: .medium))
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
+                        .shadow(color: themeColor.opacity(0.3), radius: 3, x: 0, y: 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(themeColor.opacity(0.3), lineWidth: 1.5)
+                        )
+                )
+            }
+            
+            // Hatalar
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.red)
+                Text("\(sudokuModel.mistakes)")
+                    .foregroundColor(isDarkMode ? .white : .black)
+                    .font(.system(size: buttonFontSize, weight: .medium))
+            }
+            .padding(.vertical, 10)
+            .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
+                    .shadow(color: Color.red.opacity(0.3), radius: 3, x: 0, y: 2)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.red.opacity(0.3), lineWidth: 1.5)
+                    )
+            )
+            
+            // Zorluk seviyesi
+            Button(action: {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    showingDifficultyPicker = true
+                }
+            }) {
+                HStack {
+                    Image(systemName: "slider.horizontal.3")
+                        .foregroundColor(themeSecondaryColor)
+                    Text("Zorluk")
+                        .foregroundColor(isDarkMode ? .white : .black)
+                        .font(.system(size: buttonFontSize, weight: .medium))
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
+                        .shadow(color: themeSecondaryColor.opacity(0.3), radius: 3, x: 0, y: 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(themeSecondaryColor.opacity(0.3), lineWidth: 1.5)
+                        )
+                )
+            }
+        }
+        .padding(.horizontal, horizontalPadding)
+        .padding(.top, 5)
+    }
+    
+    private var actionButtonsView: some View {
+        HStack(spacing: UIScreen.main.bounds.width >= 390 ? 10 : 6) {
+            // Yeni oyun butonu
+            Button(action: {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    startNewGame()
+                }
+            }) {
+                HStack {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: buttonFontSize))
+                    Text("Yeni Oyun")
+                        .font(.system(size: buttonFontSize, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .padding(.vertical, 12)
+                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .shadow(color: themeColor.opacity(0.5), radius: 4, x: 0, y: 3)
+                )
+            }
+            
+            // Geri alma butonu
+            Button(action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                    // Geri alma işlemini arka planda yap
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        DispatchQueue.main.async {
+                            sudokuModel.undoLastMove()
+                        }
+                    }
+                }
+            }) {
+                HStack {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: buttonFontSize))
+                    Text("Geri Al")
+                        .font(.system(size: buttonFontSize, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .padding(.vertical, 12)
+                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
+                .background(undoButtonBackground)
+            }
+            .disabled(!sudokuModel.canUndo)
+            
+            // İpucu butonu
+            Button(action: {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    showHint()
+                }
+            }) {
+                HStack {
+                    Image(systemName: "lightbulb.fill")
+                        .font(.system(size: buttonFontSize))
+                    Text("İpucu")
+                        .font(.system(size: buttonFontSize, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .padding(.vertical, 12)
+                .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 15 : 10)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [themeSecondaryColor.opacity(0.8), themeSecondaryColor]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .shadow(color: themeSecondaryColor.opacity(0.5), radius: 4, x: 0, y: 3)
+                )
+            }
+        }
+        .padding(.horizontal, horizontalPadding)
+        .padding(.top, 5)
+    }
+    
+    private var undoButtonBackground: some View {
+        Group {
+            if sudokuModel.canUndo {
+                LinearGradient(
+                    gradient: Gradient(colors: [themeColor.opacity(0.8), themeColor]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: themeColor.opacity(0.5), radius: 4, x: 0, y: 3)
+            } else {
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.gray.opacity(0.8), Color.gray]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: Color.gray.opacity(0.3), radius: 2, x: 0, y: 2)
+            }
+        }
+    }
+    
+    private var noteModeButton: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                noteMode.toggle()
+            }
+        }) {
+            HStack {
+                Image(systemName: noteMode ? "pencil.circle.fill" : "pencil.circle")
+                    .font(.system(size: buttonFontSize + 2))
+                Text("Not Modu")
+                    .font(.system(size: buttonFontSize, weight: noteMode ? .semibold : .medium))
+            }
+            .foregroundColor(noteMode ? .white : (isDarkMode ? .white : .black))
+            .padding(.vertical, 10)
+            .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 20 : 15)
+            .background(
+                noteMode ?
+                LinearGradient(
+                    gradient: Gradient(colors: [themeColor.opacity(0.8), themeColor]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: themeColor.opacity(0.5), radius: 3, x: 0, y: 2) :
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isDarkMode ? Color.gray.opacity(0.3) : Color.gray.opacity(0.1))
+                    .shadow(color: Color.gray.opacity(0.2), radius: 2, x: 0, y: 1)
+            )
+        }
+        .padding(.horizontal, horizontalPadding)
+        .padding(.top, 5)
+    }
+    
+    private var sudokuGridView: some View {
+        VStack(spacing: 0) {
+            ForEach(0..<3) { blockRow in
+                HStack(spacing: 0) {
+                    ForEach(0..<3) { blockCol in
+                        SudokuBlock(
+                            blockRow: blockRow,
+                            blockCol: blockCol,
+                            sudokuModel: sudokuModel,
+                            selectedNumber: $selectedNumber,
+                            notes: $notes,
+                            themeColor: themeColor,
+                            isDarkMode: isDarkMode
+                        )
+                    }
+                }
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
+                .shadow(color: isDarkMode ? Color.black.opacity(0.5) : Color.gray.opacity(0.3), radius: 15, x: 0, y: 8)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    LinearGradient(
+                        gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 3
+                )
+        )
+        .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 5 : 2)
+        .scaleEffect(sudokuModel.shakeGrid ? 0.95 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: sudokuModel.shakeGrid)
+        .frame(
+            maxWidth: min(UIScreen.main.bounds.width - 8, UIScreen.main.bounds.height * 0.8),
+            maxHeight: min(UIScreen.main.bounds.width - 8, UIScreen.main.bounds.height * 0.8)
+        )
+        .aspectRatio(1, contentMode: .fit)
+        .rotation3DEffect(
+            .degrees(sudokuModel.isGameComplete ? 360 : 0),
+            axis: (x: 0, y: 1, z: 0),
+            anchor: .center,
+            anchorZ: 0,
+            perspective: 0.3
+        )
+        .animation(
+            sudokuModel.isGameComplete ?
+            .spring(response: 0.6, dampingFraction: 0.6).delay(0.1) :
+            .spring(response: 0.3, dampingFraction: 0.6),
+            value: sudokuModel.isGameComplete
+        )
+    }
+    
+    private var numberPickerView: some View {
+        HStack(spacing: 4) {
+            ForEach(1...9, id: \.self) { number in
+                Button(action: {
+                    numberButtonAction(number: number)
+                }) {
+                    Text("\(number)")
+                        .font(.system(size: UIScreen.main.bounds.width >= 390 ? 28 : 24, weight: .bold))
+                        .frame(width: numberButtonSize, height: numberButtonSize)
+                        .background(
+                            selectedNumber == number ?
+                            LinearGradient(
+                                gradient: Gradient(colors: [themeColor, themeSecondaryColor]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 10)) :
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(themeColor.opacity(0.3), lineWidth: 1)
+                        )
+                        .foregroundColor(selectedNumber == number ? .white : (isDarkMode ? .white : .black))
+                        .shadow(color: selectedNumber == number ? themeColor.opacity(0.5) : Color.gray.opacity(0.2), radius: 3, x: 0, y: 2)
+                        .scaleEffect(selectedNumber == number ? 1.05 : 1.0)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(.horizontal, horizontalPadding)
+        .padding(.vertical, 10)
+    }
+    
+    private var deleteButton: some View {
+        Button(action: {
+            deleteButtonAction()
+        }) {
+            HStack {
+                Image(systemName: "delete.left.fill")
+                    .font(.system(size: UIScreen.main.bounds.width >= 390 ? 18 : 16))
+                Text("Sil")
+                    .font(.system(size: UIScreen.main.bounds.width >= 390 ? 16 : 14, weight: .semibold))
+            }
+            .padding(.vertical, 10)
+            .padding(.horizontal, UIScreen.main.bounds.width >= 390 ? 25 : 20)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.red.opacity(0.8), Color.red]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            )
+            .foregroundColor(.white)
+            .shadow(color: Color.red.opacity(0.4), radius: 3, x: 0, y: 2)
+        }
+        .padding(.bottom, 10)
+    }
+    
+    // MARK: - Yardımcı fonksiyonlar
+    
+    private func numberButtonAction(number: Int) {
+        if let selected = sudokuModel.selectedCell {
+            if noteMode {
+                // Not modu aktifse, notu ekle veya çıkar
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                    toggleNote(number: number, at: selected)
+                }
+            } else if sudokuModel.grid[selected.row][selected.col] == nil {
+                // Normal mod, sayıyı yerleştir
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                    // Sayı yerleştirme işlemini arka planda yap
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        DispatchQueue.main.async {
+                            sudokuModel.placeNumber(number)
+                        }
+                    }
+                }
+            }
+        }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+            selectedNumber = number
+        }
+    }
+    
+    private func deleteButtonAction() {
+        if let selected = sudokuModel.selectedCell {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                if noteMode {
+                    // Not modunda tüm notları temizle
+                    notes[selected.row][selected.col] = []
+                } else if sudokuModel.grid[selected.row][selected.col] != nil {
+                    // Normal modda hücreyi temizle
+                    // Silme işlemini arka planda yap
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        DispatchQueue.main.async {
+                            sudokuModel.clearCell(at: selected.row, col: selected.col)
+                        }
+                    }
+                }
+            }
+        }
     }
     
     private func toggleNote(number: Int, at cell: (row: Int, col: Int)) {

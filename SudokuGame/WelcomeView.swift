@@ -166,9 +166,9 @@ struct WelcomeView: View {
                         .padding(.horizontal)
                         
                         // Oyuna başla butonu
-                        NavigationLink(isActive: $isGameStarted) {
+                        NavigationLink {
                             ContentView()
-                                .navigationBarBackButtonHidden(true)
+                                .navigationBarBackButtonHidden()
                         } label: {
                             HStack {
                                 Image(systemName: "play.fill")
