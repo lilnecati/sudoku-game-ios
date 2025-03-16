@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Foundation
 
 // Konfeti efekti için yardımcı yapı
 struct ConfettiView: View {
@@ -1424,6 +1425,234 @@ struct BadgeDetailView: View {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             onDismiss()
+        }
+    }
+}
+
+// SudokuModel sınıfını ekleyelim
+class SudokuModel: ObservableObject {
+    @Published var grid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+    @Published var selectedCell: (row: Int, col: Int)? = nil
+    @Published var mistakes: Int = 0
+    @Published var gameTime: Int = 0
+    @Published var isGameComplete: Bool = false
+    @Published var shakeGrid: Bool = false
+    @Published var difficulty: Difficulty = .medium
+    
+    enum Difficulty: String, CaseIterable {
+        case easy = "Kolay"
+        case medium = "Orta"
+        case hard = "Zor"
+    }
+    
+    init() {
+        generateNewGame()
+    }
+    
+    func generateNewGame() {
+        // Burada gerçek bir Sudoku oluşturma algoritması kullanılabilir
+        // Şimdilik basit bir grid oluşturalım
+        grid = Array(repeating: Array(repeating: nil, count: 9), count: 9)
+        selectedCell = nil
+        isGameComplete = false
+        
+        // Örnek olarak bazı hücreleri dolduralım
+        let cellsToFill = difficulty == .easy ? 30 : (difficulty == .medium ? 25 : 20)
+        for _ in 0..<cellsToFill {
+            let row = Int.random(in: 0..<9)
+            let col = Int.random(in: 0..<9)
+            grid[row][col] = Int.random(in: 1...9)
+        }
+    }
+    
+    func placeNumber(_ number: Int) -> Bool {
+        guard let selected = selectedCell else { return false }
+        
+        // Burada gerçek bir Sudoku doğrulama algoritması kullanılabilir
+        // Şimdilik basit bir kontrol yapalım
+        let isValid = isValidPlacement(number, at: selected.row, col: selected.col)
+        
+        if isValid {
+            grid[selected.row][selected.col] = number
+            
+            // Oyun tamamlandı mı kontrol et
+            checkGameCompletion()
+            
+            return true
+        } else {
+            mistakes += 1
+            
+            // Hata animasyonu
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                shakeGrid = true
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation {
+                    self.shakeGrid = false
+                }
+            }
+            
+            return false
+        }
+    }
+    
+    private func isValidPlacement(_ number: Int, at row: Int, col: Int) -> Bool {
+        // Satır kontrolü
+        for c in 0..<9 {
+            if c != col && grid[row][c] == number {
+                return false
+            }
+        }
+        
+        // Sütun kontrolü
+        for r in 0..<9 {
+            if r != row && grid[r][col] == number {
+                return false
+            }
+        }
+        
+        // 3x3 blok kontrolü
+        let blockRow = row / 3 * 3
+        let blockCol = col / 3 * 3
+        
+        for r in blockRow..<blockRow+3 {
+            for c in blockCol..<blockCol+3 {
+                if (r != row || c != col) && grid[r][c] == number {
+                    return false
+                }
+            }
+        }
+        
+        return true
+    }
+    
+    private func checkGameCompletion() {
+        // Tüm hücreler dolu mu kontrol et
+        for row in 0..<9 {
+            for col in 0..<9 {
+                if grid[row][col] == nil {
+                    return
+                }
+            }
+        }
+        
+        // Tüm hücreler dolu ise oyun tamamlandı
+        isGameComplete = true
+    }
+}
+
+// Tema seçici görünümü
+struct ThemePickerView: View {
+    @Binding var selectedTheme: ContentView.ColorTheme
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.presentationMode) var presentationMode
+    @State private var dragOffset: CGFloat = 0
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                (colorScheme == .dark ? Color.black : Color.white).ignoresSafeArea()
+                
+                VStack(spacing: 20) {
+                    Text("Tema Seçin")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .padding(.top, 20)
+                    
+                    ScrollView {
+                        VStack(spacing: 15) {
+                            ForEach(ContentView.ColorTheme.allCases) { theme in
+                                Button(action: {
+                                    withAnimation {
+                                        selectedTheme = theme
+                                    }
+                                    
+                                    // Haptic feedback
+                                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                                    generator.impactOccurred()
+                                    
+                                    // Kısa bir gecikme ile kapat
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                        presentationMode.wrappedValue.dismiss()
+                                    }
+                                }) {
+                                    HStack {
+                                        Circle()
+                                            .fill(theme.mainColor)
+                                            .frame(width: 30, height: 30)
+                                        
+                                        Image(systemName: theme.icon)
+                                            .foregroundColor(theme.mainColor)
+                                            .font(.title3)
+                                            .padding(.leading, 5)
+                                        
+                                        Text(theme.rawValue)
+                                            .font(.title3)
+                                            .padding(.leading, 10)
+                                            .foregroundColor(colorScheme == .dark ? .white : .primary)
+                                        
+                                        Spacer()
+                                        
+                                        if selectedTheme == theme {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(theme.mainColor)
+                                        }
+                                    }
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(colorScheme == .dark ? 
+                                                  (selectedTheme == theme ? theme.mainColor.opacity(0.3) : Color.gray.opacity(0.2)) : 
+                                                  (selectedTheme == theme ? theme.mainColor.opacity(0.2) : Color.gray.opacity(0.1)))
+                                            .shadow(color: colorScheme == .dark ? theme.mainColor.opacity(0.3) : theme.mainColor.opacity(0.2), radius: 3, x: 0, y: 2)
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    
+                    Spacer()
+                    
+                    // Kaydırma ipucu
+                    HStack {
+                        Image(systemName: "arrow.right")
+                        Text("Kapatmak için sağa kaydırın")
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .padding(.bottom, 20)
+                }
+                .offset(x: dragOffset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            if value.translation.width > 0 {
+                                dragOffset = value.translation.width
+                            }
+                        }
+                        .onEnded { value in
+                            if value.translation.width > 100 {
+                                presentationMode.wrappedValue.dismiss()
+                            } else {
+                                withAnimation {
+                                    dragOffset = 0
+                                }
+                            }
+                        }
+                )
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Kapat") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .foregroundColor(selectedTheme.mainColor)
+                }
+            }
         }
     }
 }
