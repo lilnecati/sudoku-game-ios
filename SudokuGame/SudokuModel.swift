@@ -325,10 +325,10 @@ class SudokuModel: ObservableObject {
     
     func enterNumber(_ number: Int, at row: Int, col: Int) {
         // Hücre düzenlenebilir değilse işlem yapma
-        guard isCellEditable(at: row, col) else { return }
+        guard isCellEditable(at: row, col: col) else { return }
         
         // Geçerli bir hamle mi kontrol et
-        if isValidMove(number: number, at: row, col) {
+        if isValidMove(number: number, at: row, col: col) {
             grid[row][col] = number
             checkGameCompletion()
         } else {
