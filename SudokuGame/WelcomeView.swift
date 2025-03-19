@@ -1,5 +1,13 @@
 import SwiftUI
 
+// Etkinlik modeli
+struct EventItem: Identifiable {
+    let id = UUID()
+    let title: String
+    let date: String
+    let description: String
+}
+
 struct WelcomeView: View {
     @StateObject private var gameStats = GameStats()
     @StateObject private var lifecycleManager = AppLifecycleManager()
@@ -35,212 +43,33 @@ struct WelcomeView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Geliştirilmiş arka plan gradyanı
-                LinearGradient(gradient: Gradient(colors: colorScheme == .dark ? 
-                                                 [Color.blue.opacity(0.2), Color.purple.opacity(0.3), Color.black.opacity(0.4)] : 
-                                                 [Color.blue.opacity(0.2), Color.purple.opacity(0.2), Color.white.opacity(0.3)]),
-                             startPoint: .topLeading,
-                             endPoint: .bottomTrailing)
-                    .ignoresSafeArea()
-                
-                // Arka plan deseni
-                ZStack {
-                    ForEach(0..<9) { row in
-                        ForEach(0..<9) { col in
-                            Rectangle()
-                                .stroke(primaryColor.opacity(0.1), lineWidth: 1)
-                                .frame(width: UIScreen.main.bounds.width / 9, height: UIScreen.main.bounds.width / 9)
-                                .offset(x: CGFloat(col - 4) * UIScreen.main.bounds.width / 9,
-                                        y: CGFloat(row - 4) * UIScreen.main.bounds.width / 9)
-                        }
-                    }
-                }
-                .rotationEffect(.degrees(15))
-                .opacity(0.5)
+                // Geliştirilmiş arka plan
+                welcomeBackgroundView
                 
                 VStack(spacing: 20) {
-                    // Üst bar - Giriş/Profil ve Etkinlikler
-                    HStack {
-                        Spacer()
-                        
-                        // Kullanıcı girişi/profil butonu
-                        Button(action: {
-                            withAnimation {
-                                if userModel.isLoggedIn {
-                                    showingProfile = true
-                                } else {
-                                    showingLogin = true
-                                }
-                            }
-                        }) {
-                            HStack(spacing: 5) {
-                                Image(systemName: userModel.isLoggedIn ? "person.circle.fill" : "person.circle")
-                                    .foregroundColor(primaryColor)
-                                if userModel.isLoggedIn {
-                                    Text(userModel.username)
-                                        .font(.caption)
-                                        .foregroundColor(primaryColor)
-                                }
-                            }
-                        }
-                        .foregroundColor(primaryColor)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(
-                            Capsule()
-                                .stroke(primaryColor, lineWidth: 1.5)
-                                .background(
-                                    Capsule()
-                                        .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
-                                )
-                        )
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 10)
-                    .opacity(contentOpacity)
-                    .animation(.easeIn(duration: 0.8).delay(0.4), value: contentOpacity)
+                    // Üst bar - Giriş/Profil
+                    userProfileBarView
                     
                     // Logo ve başlık
-                    VStack(spacing: 20) {
-                        Image(systemName: "grid.circle.fill")
-                            .resizable()
-                            .frame(width: 120, height: 120)
-                            .foregroundColor(primaryColor)
-                            .background(
-                                Circle()
-                                    .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
-                                    .frame(width: 140, height: 140)
-                            )
-                            .shadow(color: primaryColor.opacity(0.5), radius: 10, x: 0, y: 5)
-                            .scaleEffect(logoScale)
-                            .animation(.spring(response: 0.6, dampingFraction: 0.6), value: logoScale)
-                        
-                        Text("SUDOKU")
-                            .font(.system(size: 42, weight: .bold, design: .rounded))
-                            .foregroundColor(primaryColor)
-                            .opacity(titleOpacity)
-                            .animation(.easeIn(duration: 0.8).delay(0.3), value: titleOpacity)
-                    }
-                    .padding(.top, 20)
+                    logoTitleView
                     
                     Spacer()
                     
                     // İçerik bölümü
-                    VStack(spacing: 25) {
-                        // Zorluk seviyesi seçimi
-                        VStack(spacing: 15) {
-                            Text("Zorluk Seviyesi")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                            
-                            Picker("Zorluk", selection: $selectedDifficulty) {
-                                ForEach(SudokuModel.Difficulty.allCases, id: \.self) { level in
-                                    Text(level.rawValue)
-                                        .tag(level)
-                                }
-                            }
-                            .pickerStyle(SegmentedPickerStyle())
-                            .padding(.horizontal)
-                        }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 15)
-                                .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
-                                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                        )
-                        .padding(.horizontal)
-                        
-                        // Başlat düğmesi
-                        Button(action: {
-                            // Seçilen zorluğu UserDefaults'a kaydet
-                            UserDefaults.standard.set(selectedDifficulty.rawValue, forKey: "difficulty")
-                            
-                            // Bu satırı ekleyin - welcome ekranını gösterme tercihini kaydeder
-                            UserDefaults.standard.set(false, forKey: "showWelcomeScreen")
-                            
-                            // Oyun başlatma bildirimini gönder
-                            NotificationCenter.default.post(name: NSNotification.Name("StartNewGame"), object: nil)
-                            
-                            // Görünümü kapat
-                            dismiss()
-                            
-                            // İstatistikleri güncelle
-                            gameStats.incrementGamesStarted()
-                            gameStats.setLastPlayedDate(Date())
-                        }) {
-                            HStack {
-                                Image(systemName: "play.fill")
-                                    .font(.headline)
-                                Text("OYUNA BAŞLA")
-                                    .font(.headline)
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 60)
-                            .background(
-                                LinearGradient(gradient: Gradient(colors: [primaryColor, secondaryColor]),
-                                              startPoint: .leading, endPoint: .trailing)
-                            )
-                            .cornerRadius(15)
-                            .shadow(color: primaryColor.opacity(0.5), radius: 5, x: 0, y: 3)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 15)
-                                    .stroke(Color.white.opacity(0.3), lineWidth: 2)
-                            )
-                        }
-                        .padding(.horizontal, 30)
-                        .offset(y: buttonOffset)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2), value: buttonOffset)
-                    }
-                    .opacity(contentOpacity)
-                    .animation(.easeIn(duration: 0.8).delay(0.5), value: contentOpacity)
+                    contentSectionView
                     
                     Spacer()
                     
                     // Nasıl oynanır butonu
-                    Button(action: {
-                        showingHowToPlay = true
-                    }) {
-                        HStack {
-                            Image(systemName: "questionmark.circle")
-                            Text("Nasıl Oynanır?")
-                        }
-                        .font(.subheadline)
-                        .foregroundColor(primaryColor)
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 20)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(primaryColor, lineWidth: 1.5)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(colorScheme == .dark ? Color.black.opacity(0.2) : Color.white.opacity(0.7))
-                                )
-                        )
-                    }
-                    .padding(.top, 5)
-                    .sheet(isPresented: $showingHowToPlay) {
-                        HowToPlayView()
-                    }
+                    howToPlayButtonView
+                    
+                    Spacer()
+                    
+                    // Alt bilgi
+                    footerView
                 }
                 .opacity(contentOpacity)
                 .animation(.easeIn(duration: 0.8).delay(0.5), value: contentOpacity)
-                
-                Spacer()
-                
-                // Alt bilgi
-                VStack(spacing: 5) {
-                    Text("Sudoku Oyunu v1.0")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text("© 2025 Necati Yıldırım")
-                        .font(.caption2)
-                        .foregroundColor(.secondary.opacity(0.7))
-                }
-                .padding(.bottom, 20)
-                .opacity(contentOpacity)
-                .animation(.easeIn(duration: 0.8).delay(0.7), value: contentOpacity)
             }
         }
         .onAppear {
@@ -267,25 +96,7 @@ struct WelcomeView: View {
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    withAnimation {
-                        if userModel.isLoggedIn {
-                            showingProfile = true
-                        } else {
-                            showingLogin = true
-                        }
-                    }
-                }) {
-                    HStack(spacing: 5) {
-                        Image(systemName: userModel.isLoggedIn ? "person.circle.fill" : "person.circle")
-                            .foregroundColor(primaryColor)
-                        if userModel.isLoggedIn {
-                            Text(userModel.username)
-                                .font(.caption)
-                                .foregroundColor(primaryColor)
-                        }
-                    }
-                }
+                profileButton
             }
         }
         .sheet(isPresented: $showingProfile) {
@@ -293,6 +104,260 @@ struct WelcomeView: View {
         }
         .sheet(isPresented: $showingLogin) {
             LoginView(userModel: userModel)
+        }
+    }
+    
+    // Arka plan görünümü
+    private var welcomeBackgroundView: some View {
+        ZStack {
+            // Gradient arka plan
+            LinearGradient(
+                gradient: Gradient(
+                    colors: colorScheme == .dark ? 
+                    [Color.blue.opacity(0.2), Color.purple.opacity(0.3), Color.black.opacity(0.4)] : 
+                    [Color.blue.opacity(0.2), Color.purple.opacity(0.2), Color.white.opacity(0.3)]
+                ),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            // Arka plan deseni
+            gridPatternView
+        }
+    }
+    
+    // Izgara deseni
+    private var gridPatternView: some View {
+        ZStack {
+            ForEach(0..<9) { row in
+                ForEach(0..<9) { col in
+                    Rectangle()
+                        .stroke(primaryColor.opacity(0.1), lineWidth: 1)
+                        .frame(width: UIScreen.main.bounds.width / 9, height: UIScreen.main.bounds.width / 9)
+                        .offset(x: CGFloat(col - 4) * UIScreen.main.bounds.width / 9,
+                                y: CGFloat(row - 4) * UIScreen.main.bounds.width / 9)
+                }
+            }
+        }
+        .rotationEffect(.degrees(15))
+        .opacity(0.5)
+    }
+    
+    // Üst bar - Profil/Giriş
+    private var userProfileBarView: some View {
+        HStack {
+            Spacer()
+            
+            // Kullanıcı girişi/profil butonu
+            Button(action: {
+                withAnimation {
+                    if userModel.isLoggedIn {
+                        showingProfile = true
+                    } else {
+                        showingLogin = true
+                    }
+                }
+            }) {
+                HStack(spacing: 5) {
+                    Image(systemName: userModel.isLoggedIn ? "person.circle.fill" : "person.circle")
+                        .foregroundColor(primaryColor)
+                    if userModel.isLoggedIn {
+                        Text(userModel.username)
+                            .font(.caption)
+                            .foregroundColor(primaryColor)
+                    }
+                }
+            }
+            .foregroundColor(primaryColor)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(
+                Capsule()
+                    .stroke(primaryColor, lineWidth: 1.5)
+                    .background(
+                        Capsule()
+                            .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
+                    )
+            )
+        }
+        .padding(.horizontal)
+        .padding(.top, 10)
+        .opacity(contentOpacity)
+        .animation(.easeIn(duration: 0.8).delay(0.4), value: contentOpacity)
+    }
+    
+    // Logo ve başlık
+    private var logoTitleView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "grid.circle.fill")
+                .resizable()
+                .frame(width: 120, height: 120)
+                .foregroundColor(primaryColor)
+                .background(
+                    Circle()
+                        .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
+                        .frame(width: 140, height: 140)
+                )
+                .shadow(color: primaryColor.opacity(0.5), radius: 10, x: 0, y: 5)
+                .scaleEffect(logoScale)
+                .animation(.spring(response: 0.6, dampingFraction: 0.6), value: logoScale)
+            
+            Text("SUDOKU")
+                .font(.system(size: 42, weight: .bold, design: .rounded))
+                .foregroundColor(primaryColor)
+                .opacity(titleOpacity)
+                .animation(.easeIn(duration: 0.8).delay(0.3), value: titleOpacity)
+        }
+        .padding(.top, 20)
+    }
+    
+    // İçerik bölümü
+    private var contentSectionView: some View {
+        VStack(spacing: 25) {
+            // Zorluk seviyesi seçimi
+            difficultyPickerView
+            
+            // Başlat düğmesi
+            startGameButtonView
+        }
+        .opacity(contentOpacity)
+        .animation(.easeIn(duration: 0.8).delay(0.5), value: contentOpacity)
+    }
+    
+    // Zorluk seviyesi seçici
+    private var difficultyPickerView: some View {
+        VStack(spacing: 15) {
+            Text("Zorluk Seviyesi")
+                .font(.headline)
+                .foregroundColor(.secondary)
+            
+            Picker("Zorluk", selection: $selectedDifficulty) {
+                ForEach(SudokuModel.Difficulty.allCases, id: \.self) { level in
+                    Text(level.rawValue)
+                        .tag(level)
+                }
+            }
+            .pickerStyle(SegmentedPickerStyle())
+            .padding(.horizontal)
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        )
+        .padding(.horizontal)
+    }
+    
+    // Başlat düğmesi
+    private var startGameButtonView: some View {
+        Button(action: {
+            // Seçilen zorluğu UserDefaults'a kaydet
+            UserDefaults.standard.set(selectedDifficulty.rawValue, forKey: "difficulty")
+            
+            // Bu satırı ekleyin - welcome ekranını gösterme tercihini kaydeder
+            UserDefaults.standard.set(false, forKey: "showWelcomeScreen")
+            
+            // Oyun başlatma bildirimini gönder
+            NotificationCenter.default.post(name: NSNotification.Name("StartNewGame"), object: nil)
+            
+            // Görünümü kapat
+            dismiss()
+            
+            // İstatistikleri güncelle
+            gameStats.incrementGamesStarted()
+            gameStats.setLastPlayedDate(Date())
+        }) {
+            HStack {
+                Image(systemName: "play.fill")
+                    .font(.headline)
+                Text("OYUNA BAŞLA")
+                    .font(.headline)
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 60)
+            .background(
+                LinearGradient(gradient: Gradient(colors: [primaryColor, secondaryColor]),
+                              startPoint: .leading, endPoint: .trailing)
+            )
+            .cornerRadius(15)
+            .shadow(color: primaryColor.opacity(0.5), radius: 5, x: 0, y: 3)
+            .overlay(
+                RoundedRectangle(cornerRadius: 15)
+                    .stroke(Color.white.opacity(0.3), lineWidth: 2)
+            )
+        }
+        .padding(.horizontal, 30)
+        .offset(y: buttonOffset)
+        .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2), value: buttonOffset)
+    }
+    
+    // Nasıl oynanır düğmesi
+    private var howToPlayButtonView: some View {
+        Button(action: {
+            showingHowToPlay = true
+        }) {
+            HStack {
+                Image(systemName: "questionmark.circle")
+                Text("Nasıl Oynanır?")
+            }
+            .font(.subheadline)
+            .foregroundColor(primaryColor)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(primaryColor, lineWidth: 1.5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(colorScheme == .dark ? Color.black.opacity(0.2) : Color.white.opacity(0.7))
+                    )
+            )
+        }
+        .padding(.top, 5)
+        .sheet(isPresented: $showingHowToPlay) {
+            HowToPlayView()
+        }
+    }
+    
+    // Alt bilgi görünümü
+    private var footerView: some View {
+        VStack(spacing: 5) {
+            Text("Sudoku Oyunu v1.0")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Text("© 2025 Necati Yıldırım")
+                .font(.caption2)
+                .foregroundColor(.secondary.opacity(0.7))
+        }
+        .padding(.bottom, 20)
+        .opacity(contentOpacity)
+        .animation(.easeIn(duration: 0.8).delay(0.7), value: contentOpacity)
+    }
+    
+    // Profil düğmesi
+    private var profileButton: some View {
+        Button(action: {
+            withAnimation {
+                if userModel.isLoggedIn {
+                    showingProfile = true
+                } else {
+                    showingLogin = true
+                }
+            }
+        }) {
+            HStack(spacing: 5) {
+                Image(systemName: userModel.isLoggedIn ? "person.circle.fill" : "person.circle")
+                    .foregroundColor(primaryColor)
+                if userModel.isLoggedIn {
+                    Text(userModel.username)
+                        .font(.caption)
+                        .foregroundColor(primaryColor)
+                }
+            }
         }
     }
     
@@ -339,12 +404,7 @@ struct LoginView: View {
         NavigationStack {
             ZStack {
                 // Arka plan
-                LinearGradient(gradient: Gradient(colors: colorScheme == .dark ? 
-                                                 [Color.blue.opacity(0.1), Color.purple.opacity(0.2), Color.black.opacity(0.3)] : 
-                                                 [Color.blue.opacity(0.1), Color.purple.opacity(0.1), Color.white.opacity(0.2)]),
-                             startPoint: .topLeading,
-                             endPoint: .bottomTrailing)
-                    .ignoresSafeArea()
+                loginBackgroundView
                 
                 VStack(spacing: 30) {
                     Image(systemName: "person.circle.fill")
@@ -358,56 +418,7 @@ struct LoginView: View {
                         .fontWeight(.bold)
                         .foregroundColor(primaryColor)
                     
-                    VStack(spacing: 20) {
-                        TextField("Kullanıcı Adı", text: $inputUsername)
-                            .padding()
-                            .background(Color(UIColor.systemBackground))
-                            .cornerRadius(10)
-                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                        
-                        SecureField("Şifre", text: $password)
-                            .padding()
-                            .background(Color(UIColor.systemBackground))
-                            .cornerRadius(10)
-                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                        
-                        Button(action: {
-                            if inputUsername.isEmpty || password.isEmpty {
-                                alertMessage = "Kullanıcı adı ve şifre boş olamaz!"
-                                showingAlert = true
-                            } else {
-                                // UserModel'in login metodunu kullan
-                                if userModel.login(username: inputUsername, password: password) {
-                                    presentationMode.wrappedValue.dismiss()
-                                } else {
-                                    alertMessage = "Kullanıcı adı veya şifre hatalı!"
-                                    showingAlert = true
-                                }
-                            }
-                        }) {
-                            Text("Giriş Yap")
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 50)
-                                .background(
-                                    LinearGradient(gradient: Gradient(colors: [primaryColor, primaryColor.opacity(0.8)]),
-                                                 startPoint: .leading, endPoint: .trailing)
-                                )
-                                .cornerRadius(10)
-                                .shadow(color: primaryColor.opacity(0.3), radius: 5, x: 0, y: 3)
-                        }
-                        
-                        Button(action: {
-                            showingRegister = true
-                        }) {
-                            Text("Hesabınız yok mu? Kayıt olun")
-                                .font(.footnote)
-                                .foregroundColor(primaryColor)
-                        }
-                        .padding(.top, 10)
-                    }
-                    .padding(.horizontal, 30)
+                    loginFormView
                     
                     Spacer()
                 }
@@ -431,6 +442,74 @@ struct LoginView: View {
                 }
             }
         }
+    }
+    
+    // Arka plan
+    private var loginBackgroundView: some View {
+        LinearGradient(
+            gradient: Gradient(
+                colors: colorScheme == .dark ? 
+                [Color.blue.opacity(0.1), Color.purple.opacity(0.2), Color.black.opacity(0.3)] : 
+                [Color.blue.opacity(0.1), Color.purple.opacity(0.1), Color.white.opacity(0.2)]
+            ),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+    }
+    
+    // Form içeriği
+    private var loginFormView: some View {
+        VStack(spacing: 20) {
+            TextField("Kullanıcı Adı", text: $inputUsername)
+                .padding()
+                .background(Color(UIColor.systemBackground))
+                .cornerRadius(10)
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+            
+            SecureField("Şifre", text: $password)
+                .padding()
+                .background(Color(UIColor.systemBackground))
+                .cornerRadius(10)
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+            
+            Button(action: {
+                if inputUsername.isEmpty || password.isEmpty {
+                    alertMessage = "Kullanıcı adı ve şifre boş olamaz!"
+                    showingAlert = true
+                } else {
+                    // UserModel'in login metodunu kullan
+                    if userModel.login(username: inputUsername, password: password) {
+                        presentationMode.wrappedValue.dismiss()
+                    } else {
+                        alertMessage = "Kullanıcı adı veya şifre hatalı!"
+                        showingAlert = true
+                    }
+                }
+            }) {
+                Text("Giriş Yap")
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(
+                        LinearGradient(gradient: Gradient(colors: [primaryColor, primaryColor.opacity(0.8)]),
+                                     startPoint: .leading, endPoint: .trailing)
+                    )
+                    .cornerRadius(10)
+                    .shadow(color: primaryColor.opacity(0.3), radius: 5, x: 0, y: 3)
+            }
+            
+            Button(action: {
+                showingRegister = true
+            }) {
+                Text("Hesabınız yok mu? Kayıt olun")
+                    .font(.footnote)
+                    .foregroundColor(primaryColor)
+            }
+            .padding(.top, 10)
+        }
+        .padding(.horizontal, 30)
     }
 }
 
@@ -458,12 +537,7 @@ struct EventsView: View {
         NavigationStack {
             ZStack {
                 // Arka plan
-                LinearGradient(gradient: Gradient(colors: colorScheme == .dark ? 
-                                                 [Color.blue.opacity(0.1), Color.purple.opacity(0.2), Color.black.opacity(0.3)] : 
-                                                 [Color.blue.opacity(0.1), Color.purple.opacity(0.1), Color.white.opacity(0.2)]),
-                             startPoint: .topLeading,
-                             endPoint: .bottomTrailing)
-                    .ignoresSafeArea()
+                eventsBackgroundView
                 
                 VStack {
                     Text("Yaklaşan Etkinlikler")
@@ -472,49 +546,7 @@ struct EventsView: View {
                         .foregroundColor(primaryColor)
                         .padding(.top, 20)
                     
-                    List {
-                        ForEach(events) { event in
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(event.title)
-                                    .font(.headline)
-                                    .foregroundColor(primaryColor)
-                                
-                                HStack {
-                                    Image(systemName: "calendar")
-                                        .foregroundColor(.secondary)
-                                    Text(event.date)
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                Text(event.description)
-                                    .font(.body)
-                                    .foregroundColor(.primary)
-                                    .padding(.top, 2)
-                                
-                                Button(action: {
-                                    selectedEvent = event
-                                    showingEventDetail = true
-                                }) {
-                                    Text("Katıl")
-                                        .font(.footnote)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 20)
-                                        .padding(.vertical, 8)
-                                        .background(primaryColor)
-                                        .cornerRadius(20)
-                                }
-                                .padding(.top, 5)
-                            }
-                            .padding(.vertical, 8)
-                            .onTapGesture {
-                                selectedEvent = event
-                                showingEventDetail = true
-                            }
-                        }
-                    }
-                    .listStyle(InsetGroupedListStyle())
+                    eventsListView
                 }
             }
             .navigationTitle("Etkinlikler")
@@ -533,14 +565,230 @@ struct EventsView: View {
             }
         }
     }
+    
+    // Arka plan
+    private var eventsBackgroundView: some View {
+        LinearGradient(
+            gradient: Gradient(
+                colors: colorScheme == .dark ? 
+                [Color.blue.opacity(0.1), Color.purple.opacity(0.2), Color.black.opacity(0.3)] : 
+                [Color.blue.opacity(0.1), Color.purple.opacity(0.1), Color.white.opacity(0.2)]
+            ),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+    }
+    
+    // Etkinlik listesi
+    private var eventsListView: some View {
+        List {
+            ForEach(events) { event in
+                eventRowView(event: event)
+            }
+        }
+        .listStyle(InsetGroupedListStyle())
+    }
+    
+    // Etkinlik satırı
+    private func eventRowView(event: EventItem) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(event.title)
+                .font(.headline)
+                .foregroundColor(primaryColor)
+            
+            HStack {
+                Image(systemName: "calendar")
+                    .foregroundColor(.secondary)
+                Text(event.date)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            
+            Text(event.description)
+                .font(.body)
+                .foregroundColor(.primary)
+                .padding(.top, 2)
+            
+            Button(action: {
+                selectedEvent = event
+                showingEventDetail = true
+            }) {
+                Text("Katıl")
+                    .font(.footnote)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .background(primaryColor)
+                    .cornerRadius(20)
+            }
+            .padding(.top, 5)
+        }
+        .padding(.vertical, 8)
+        .onTapGesture {
+            selectedEvent = event
+            showingEventDetail = true
+        }
+    }
 }
 
-// Etkinlik modeli
-struct EventItem: Identifiable {
-    let id = UUID()
-    let title: String
-    let date: String
-    let description: String
+// Etkinlik Detay Sayfası
+struct EventDetailView: View {
+    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.colorScheme) var colorScheme
+    
+    let event: EventItem
+    @State private var isRegistered = false
+    
+    private var primaryColor: Color {
+        colorScheme == .dark ? Color.purple : Color.blue
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                // Arka plan
+                eventDetailBackgroundView
+                
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Etkinlik başlığı ve tarihi
+                        eventHeaderView
+                        
+                        // Etkinlik detay bilgileri
+                        eventDetailInfoView
+                        
+                        // Katılım butonu
+                        registerButtonView
+                    }
+                    .padding(.horizontal, 20)
+                }
+            }
+            .navigationTitle("Etkinlik Detayı")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Kapat") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    // Arka plan
+    private var eventDetailBackgroundView: some View {
+        LinearGradient(
+            gradient: Gradient(
+                colors: colorScheme == .dark ? 
+                [Color.blue.opacity(0.1), Color.purple.opacity(0.2), Color.black.opacity(0.3)] : 
+                [Color.blue.opacity(0.1), Color.purple.opacity(0.1), Color.white.opacity(0.2)]
+            ),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+    }
+    
+    // Başlık ve tarih
+    private var eventHeaderView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Etkinlik başlığı
+            Text(event.title)
+                .font(.title)
+                .fontWeight(.bold)
+                .foregroundColor(primaryColor)
+                .padding(.top, 20)
+            
+            // Etkinlik tarihi
+            HStack {
+                Image(systemName: "calendar")
+                    .foregroundColor(.secondary)
+                Text(event.date)
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.bottom, 10)
+            
+            // Etkinlik açıklaması
+            Text("Etkinlik Detayları")
+                .font(.headline)
+                .foregroundColor(primaryColor)
+            
+            Text(event.description)
+                .font(.body)
+                .foregroundColor(.primary)
+                .padding(.bottom, 20)
+        }
+    }
+    
+    // Detay bilgileri
+    private var eventDetailInfoView: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            HStack {
+                Image(systemName: "mappin.circle.fill")
+                    .foregroundColor(primaryColor)
+                Text("Konum: Online")
+                    .font(.subheadline)
+            }
+            
+            HStack {
+                Image(systemName: "person.3.fill")
+                    .foregroundColor(primaryColor)
+                Text("Katılımcılar: 24/50")
+                    .font(.subheadline)
+            }
+            
+            HStack {
+                Image(systemName: "clock.fill")
+                    .foregroundColor(primaryColor)
+                Text("Süre: 2 saat")
+                    .font(.subheadline)
+            }
+            
+            HStack {
+                Image(systemName: "trophy.fill")
+                    .foregroundColor(primaryColor)
+                Text("Ödül: 500 Puan")
+                    .font(.subheadline)
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
+        )
+        .padding(.bottom, 30)
+    }
+    
+    // Katılım butonu
+    private var registerButtonView: some View {
+        Button(action: {
+            isRegistered.toggle()
+        }) {
+            Text(isRegistered ? "Katılımı İptal Et" : "Etkinliğe Katıl")
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(
+                            colors: [
+                                isRegistered ? Color.red : primaryColor, 
+                                isRegistered ? Color.red.opacity(0.8) : primaryColor.opacity(0.8)
+                            ]
+                        ),
+                        startPoint: .leading, 
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(10)
+                .shadow(color: (isRegistered ? Color.red : primaryColor).opacity(0.3), radius: 5, x: 0, y: 3)
+        }
+        .padding(.bottom, 20)
+    }
 }
 
 // Kayıt Ol Ekranı
@@ -565,12 +813,7 @@ struct RegisterView: View {
         NavigationStack {
             ZStack {
                 // Arka plan
-                LinearGradient(gradient: Gradient(colors: colorScheme == .dark ? 
-                                                 [Color.blue.opacity(0.1), Color.purple.opacity(0.2), Color.black.opacity(0.3)] : 
-                                                 [Color.blue.opacity(0.1), Color.purple.opacity(0.1), Color.white.opacity(0.2)]),
-                             startPoint: .topLeading,
-                             endPoint: .bottomTrailing)
-                    .ignoresSafeArea()
+                registerBackgroundView
                 
                 ScrollView {
                     VStack(spacing: 30) {
@@ -585,75 +828,7 @@ struct RegisterView: View {
                             .fontWeight(.bold)
                             .foregroundColor(primaryColor)
                         
-                        VStack(spacing: 20) {
-                            TextField("Kullanıcı Adı", text: $username)
-                                .padding()
-                                .background(Color(UIColor.systemBackground))
-                                .cornerRadius(10)
-                                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                            
-                            TextField("E-posta", text: $email)
-                                .keyboardType(.emailAddress)
-                                .autocapitalization(.none)
-                                .padding()
-                                .background(Color(UIColor.systemBackground))
-                                .cornerRadius(10)
-                                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                            
-                            SecureField("Şifre", text: $password)
-                                .padding()
-                                .background(Color(UIColor.systemBackground))
-                                .cornerRadius(10)
-                                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                            
-                            SecureField("Şifreyi Tekrarla", text: $confirmPassword)
-                                .padding()
-                                .background(Color(UIColor.systemBackground))
-                                .cornerRadius(10)
-                                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                            
-                            Button(action: {
-                                if username.isEmpty || email.isEmpty || password.isEmpty {
-                                    alertMessage = "Tüm alanları doldurun!"
-                                    showingAlert = true
-                                } else if password != confirmPassword {
-                                    alertMessage = "Şifreler eşleşmiyor!"
-                                    showingAlert = true
-                                } else {
-                                    // UserModel'in register metodunu kullan
-                                    if userModel.register(username: username, email: email, password: password) {
-                                        registrationSuccess = true
-                                        alertMessage = "Kayıt başarılı! Giriş yapabilirsiniz."
-                                        showingAlert = true
-                                    } else {
-                                        alertMessage = "Kayıt sırasında bir hata oluştu!"
-                                        showingAlert = true
-                                    }
-                                }
-                            }) {
-                                Text("Kayıt Ol")
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 50)
-                                    .background(
-                                        LinearGradient(gradient: Gradient(colors: [primaryColor, primaryColor.opacity(0.8)]),
-                                                     startPoint: .leading, endPoint: .trailing)
-                                    )
-                                    .cornerRadius(10)
-                                    .shadow(color: primaryColor.opacity(0.3), radius: 5, x: 0, y: 3)
-                            }
-                            
-                            Button(action: {
-                                self.presentationMode.dismiss()
-                            }) {
-                                Text("Zaten hesabınız var mı? Giriş yapın")
-                                    .font(.footnote)
-                                    .foregroundColor(primaryColor)
-                            }
-                            .padding(.top, 10)
-                        }
-                        .padding(.horizontal, 30)
+                        registerFormView
                         
                         Spacer().frame(height: 50)
                     }
@@ -685,128 +860,98 @@ struct RegisterView: View {
             }
         }
     }
-}
-
-// Etkinlik Detay Sayfası
-struct EventDetailView: View {
-    @Environment(\.presentationMode) var presentationMode
-    @Environment(\.colorScheme) var colorScheme
     
-    let event: EventItem
-    @State private var isRegistered = false
-    
-    private var primaryColor: Color {
-        colorScheme == .dark ? Color.purple : Color.blue
+    // Arka plan
+    private var registerBackgroundView: some View {
+        LinearGradient(
+            gradient: Gradient(
+                colors: colorScheme == .dark ? 
+                [Color.blue.opacity(0.1), Color.purple.opacity(0.2), Color.black.opacity(0.3)] : 
+                [Color.blue.opacity(0.1), Color.purple.opacity(0.1), Color.white.opacity(0.2)]
+            ),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
     }
     
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                // Arka plan
-                LinearGradient(gradient: Gradient(colors: colorScheme == .dark ? 
-                                                 [Color.blue.opacity(0.1), Color.purple.opacity(0.2), Color.black.opacity(0.3)] : 
-                                                 [Color.blue.opacity(0.1), Color.purple.opacity(0.1), Color.white.opacity(0.2)]),
-                             startPoint: .topLeading,
-                             endPoint: .bottomTrailing)
-                    .ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        // Etkinlik başlığı
-                        Text(event.title)
-                            .font(.title)
-                            .fontWeight(.bold)
-                            .foregroundColor(primaryColor)
-                            .padding(.top, 20)
-                        
-                        // Etkinlik tarihi
-                        HStack {
-                            Image(systemName: "calendar")
-                                .foregroundColor(.secondary)
-                            Text(event.date)
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.bottom, 10)
-                        
-                        // Etkinlik açıklaması
-                        Text("Etkinlik Detayları")
-                            .font(.headline)
-                            .foregroundColor(primaryColor)
-                        
-                        Text(event.description)
-                            .font(.body)
-                            .foregroundColor(.primary)
-                            .padding(.bottom, 20)
-                        
-                        // Ek bilgiler
-                        VStack(alignment: .leading, spacing: 15) {
-                            HStack {
-                                Image(systemName: "mappin.circle.fill")
-                                    .foregroundColor(primaryColor)
-                                Text("Konum: Online")
-                                    .font(.subheadline)
-                            }
-                            
-                            HStack {
-                                Image(systemName: "person.3.fill")
-                                    .foregroundColor(primaryColor)
-                                Text("Katılımcılar: 24/50")
-                                    .font(.subheadline)
-                            }
-                            
-                            HStack {
-                                Image(systemName: "clock.fill")
-                                    .foregroundColor(primaryColor)
-                                Text("Süre: 2 saat")
-                                    .font(.subheadline)
-                            }
-                            
-                            HStack {
-                                Image(systemName: "trophy.fill")
-                                    .foregroundColor(primaryColor)
-                                Text("Ödül: 500 Puan")
-                                    .font(.subheadline)
-                            }
-                        }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 15)
-                                .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
-                        )
-                        .padding(.bottom, 30)
-                        
-                        // Katılım butonu
-                        Button(action: {
-                            isRegistered.toggle()
-                        }) {
-                            Text(isRegistered ? "Katılımı İptal Et" : "Etkinliğe Katıl")
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 50)
-                                .background(
-                                    LinearGradient(gradient: Gradient(colors: [isRegistered ? Color.red : primaryColor, 
-                                                                             isRegistered ? Color.red.opacity(0.8) : primaryColor.opacity(0.8)]),
-                                                 startPoint: .leading, endPoint: .trailing)
-                                )
-                                .cornerRadius(10)
-                                .shadow(color: (isRegistered ? Color.red : primaryColor).opacity(0.3), radius: 5, x: 0, y: 3)
-                        }
-                        .padding(.bottom, 20)
-                    }
-                    .padding(.horizontal, 20)
-                }
-            }
-            .navigationTitle("Etkinlik Detayı")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Kapat") {
-                        presentationMode.wrappedValue.dismiss()
+    // Form içeriği
+    private var registerFormView: some View {
+        VStack(spacing: 20) {
+            TextField("Kullanıcı Adı", text: $username)
+                .padding()
+                .background(Color(UIColor.systemBackground))
+                .cornerRadius(10)
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+            
+            TextField("E-posta", text: $email)
+                .keyboardType(.emailAddress)
+                .autocapitalization(.none)
+                .padding()
+                .background(Color(UIColor.systemBackground))
+                .cornerRadius(10)
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+            
+            SecureField("Şifre", text: $password)
+                .padding()
+                .background(Color(UIColor.systemBackground))
+                .cornerRadius(10)
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+            
+            SecureField("Şifreyi Tekrarla", text: $confirmPassword)
+                .padding()
+                .background(Color(UIColor.systemBackground))
+                .cornerRadius(10)
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+            
+            registerButtonsView
+        }
+        .padding(.horizontal, 30)
+    }
+    
+    // Butonlar
+    private var registerButtonsView: some View {
+        VStack(spacing: 15) {
+            Button(action: {
+                if username.isEmpty || email.isEmpty || password.isEmpty {
+                    alertMessage = "Tüm alanları doldurun!"
+                    showingAlert = true
+                } else if password != confirmPassword {
+                    alertMessage = "Şifreler eşleşmiyor!"
+                    showingAlert = true
+                } else {
+                    // UserModel'in register metodunu kullan
+                    if userModel.register(username: username, email: email, password: password) {
+                        registrationSuccess = true
+                        alertMessage = "Kayıt başarılı! Giriş yapabilirsiniz."
+                        showingAlert = true
+                    } else {
+                        alertMessage = "Kayıt sırasında bir hata oluştu!"
+                        showingAlert = true
                     }
                 }
+            }) {
+                Text("Kayıt Ol")
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(
+                        LinearGradient(gradient: Gradient(colors: [primaryColor, primaryColor.opacity(0.8)]),
+                                     startPoint: .leading, endPoint: .trailing)
+                    )
+                    .cornerRadius(10)
+                    .shadow(color: primaryColor.opacity(0.3), radius: 5, x: 0, y: 3)
             }
+            
+            Button(action: {
+                self.presentationMode.dismiss()
+            }) {
+                Text("Zaten hesabınız var mı? Giriş yapın")
+                    .font(.footnote)
+                    .foregroundColor(primaryColor)
+            }
+            .padding(.top, 10)
         }
     }
 }
