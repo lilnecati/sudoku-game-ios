@@ -2,6 +2,8 @@ import SwiftUI
 
 struct WelcomeView: View {
     @StateObject private var gameStats = GameStats()
+    @StateObject private var lifecycleManager = AppLifecycleManager()
+    @StateObject private var sudokuModel = SudokuModel()
     @State private var isGameStarted = false
     @State private var selectedDifficulty: SudokuModel.Difficulty = .orta
     @State private var showingHowToPlay = false
@@ -9,8 +11,10 @@ struct WelcomeView: View {
     @State private var showingEvents = false
     @State private var isLoggedIn = false
     @State private var username = ""
+    @State private var timer: Timer? = nil
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("showWelcomeScreen") private var shouldShowWelcomeScreen: Bool = true
     
     // Animasyon için state değişkenleri
     @State private var logoScale: CGFloat = 0.8
@@ -173,6 +177,9 @@ struct WelcomeView: View {
                             // Seçilen zorluğu UserDefaults'a kaydet
                             UserDefaults.standard.set(selectedDifficulty.rawValue, forKey: "difficulty")
                             
+                            // Bu satırı ekleyin - welcome ekranını gösterme tercihini kaydeder
+                            UserDefaults.standard.set(false, forKey: "showWelcomeScreen")
+                            
                             // Oyun başlatma bildirimini gönder
                             NotificationCenter.default.post(name: NSNotification.Name("StartNewGame"), object: nil)
                             
@@ -268,6 +275,40 @@ struct WelcomeView: View {
                 buttonOffset = 0
             }
         }
+        .onChange(of: lifecycleManager.isActive) { oldValue, newValue in
+            if newValue {
+                print("Uygulama aktif duruma geldi, timer'ı başlat")
+                startTimer()
+            } else {
+                print("Uygulama arka plana geçti, timer'ı durdur")
+                stopTimer()
+                
+                // Oyun durumunu kaydet
+                sudokuModel.saveGameState()
+            }
+        }
+    }
+    
+    // Timer fonksiyonları
+    private func startTimer() {
+        // Önceki zamanlayıcıyı iptal et
+        timer?.invalidate()
+        
+        // Yeni zamanlayıcı oluştur - 1 saniye aralıklarla
+        timer = Timer(timeInterval: 1.0, repeats: true) { [self] _ in
+            // SudokuModel'deki timer'ı durdur, çünkü orada da bir timer çalışıyor
+            sudokuModel.stopTimer()
+            // Sadece buradaki timer'ı kullan
+            sudokuModel.gameTime += 1
+        }
+        // Ana thread'de çalıştır ve daha doğru zamanlama için common modunu kullan
+        RunLoop.main.add(timer!, forMode: .common)
+    }
+    
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+        sudokuModel.stopTimer()
     }
 }
 

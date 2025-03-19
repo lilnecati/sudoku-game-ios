@@ -107,9 +107,9 @@ struct ContentView: View {
     @State private var showConfetti = false
     @State private var showingStats = false
     @State private var showingHint = false
+    @State private var isGameOver = false
     @AppStorage("selectedTheme") private var selectedThemeRaw: String = "Mavi"
     @State private var noteMode = false
-    @State private var notes: [[[Int]]] = Array(repeating: Array(repeating: [], count: 9), count: 9)
     @State private var showingWelcomeScreen = true // İlk açılışta hoş geldiniz ekranını göster
     @State private var isLoading = true // Başlangıçta yükleme ekranını göster
     @Environment(\.colorScheme) var colorScheme
@@ -117,6 +117,7 @@ struct ContentView: View {
     @AppStorage("userColorScheme") private var userColorSchemeRaw: String = "system"
     @State private var completedNumbers: Set<Int> = []
     @AppStorage("firstLaunch") private var isFirstLaunch: Bool = true
+    @AppStorage("showWelcomeScreen") private var shouldShowWelcomeScreen: Bool = true
     
     // Sabit değerler - performans için önceden hesaplanır
     private let buttonSize: CGFloat = UIScreen.main.bounds.width < 375 ? 40 : 45
@@ -150,117 +151,77 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Geliştirilmiş arka plan
-                backgroundView
+                // Arka plan
+                (isDarkMode ? Color.black : Color.gray.opacity(0.1))
+                    .ignoresSafeArea()
                 
-                if isLoading {
-                    LoadingView(themeColor: themeColor, isDarkMode: isDarkMode)
-                        .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .center)))
-                        .zIndex(1) // Yükleme ekranını en üstte göster
-                } else {
-                    VStack(spacing: 10) {
-                        // Geliştirilmiş üst bilgi çubuğu
-                        topBarView
-                        
-                        // Geliştirilmiş oyun bilgileri
-                        gameInfoView
-                        
-                        // Not modu butonu
-                        noteModeButton
-                        
-                        Spacer()
-                        
-                        // Geliştirilmiş Sudoku ızgarası
-                        sudokuGridView
-                        
-                        Spacer()
-                        
-                        // Geliştirilmiş rakam seçici
-                        numberPickerView
+                // Ana içerik
+                VStack {
+                    if isLoading {
+                        LoadingView(themeColor: themeColor, isDarkMode: isDarkMode)
+                            .transition(.opacity.combined(with: .scale))
+                            .animation(.easeInOut(duration: 0.5), value: isLoading)
+                    } else if shouldShowWelcomeScreen {
+                        WelcomeView()
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .leading),
+                                removal: .move(edge: .trailing)
+                            ))
+                            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: shouldShowWelcomeScreen)
+                    } else {
+                        gameView
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .trailing),
+                                removal: .move(edge: .leading)
+                            ))
+                            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: shouldShowWelcomeScreen)
                     }
-                    .transition(.opacity)
+                }
+                
+                // Konfeti efekti
+                if showConfetti {
+                    ConfettiView()
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                        .animation(.easeIn(duration: 0.5), value: showConfetti)
+                        .zIndex(100)
+                        .onAppear {
+                            // 5 saniye sonra konfeti efektini kapat
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                                withAnimation {
+                                    showConfetti = false
+                                }
+                            }
+                        }
                 }
             }
-            .sheet(isPresented: $showingHowToPlay) {
-                HowToPlayView()
-            }
-            .sheet(isPresented: $showingSettings) {
-                SettingsView(isPresented: $showingSettings, themeColor: Binding(
-                    get: { self.selectedTheme },
-                    set: { self.selectedThemeRaw = $0.rawValue }
-                ), sudokuModel: sudokuModel, userColorScheme: Binding(
-                    get: { self.userColorScheme },
-                    set: { 
-                        switch $0 {
-                        case .light: self.userColorSchemeRaw = "light"
-                        case .dark: self.userColorSchemeRaw = "dark"
-                        case .none: self.userColorSchemeRaw = "system"
-                        @unknown default: self.userColorSchemeRaw = "system"
-                        }
-                        UserDefaults.standard.synchronize()
-                    }
-                ))
-            }
-            .sheet(isPresented: $showingDifficultyPicker) {
-                DifficultyPickerView(difficulty: $sudokuModel.difficulty, themeColor: themeColor)
-            }
-            .sheet(isPresented: $showingStats) {
-                StatsView(gameTime: sudokuModel.gameTime, mistakes: sudokuModel.mistakes, difficulty: sudokuModel.difficulty, themeColor: themeColor)
-            }
-            .alert(isPresented: $showingHint) {
-                Alert(
-                    title: Text("İpucu"),
-                    message: Text("Bir sonraki hamle için ipucu: \(getHintText())"),
-                    dismissButton: .default(Text("Tamam"))
-                )
-            }
-            .alert(isPresented: $showingGameCompleteAlert) {
-                Alert(
-                    title: Text("Tebrikler!"),
-                    message: Text("Sudoku'yu \(formatTime(sudokuModel.gameTime)) sürede, \(sudokuModel.mistakes) hata ile tamamladınız!"),
-                    dismissButton: .default(Text("Yeni Oyun")) {
-                        startNewGame()
-                    }
-                )
-            }
-            .overlay(
-                showConfetti ? ConfettiView() : nil
-            )
+            .navigationBarHidden(true)
+            .preferredColorScheme(userColorScheme)
             .onAppear {
-                // İlk açılışta hoş geldiniz ekranını göster
+                // Uygulamanın ilk açılışında welcome ekranını göster
                 if isFirstLaunch {
-                    showingWelcomeScreen = true
+                    shouldShowWelcomeScreen = true
                     isFirstLaunch = false
                 }
                 
-                // Uygulama başladığında yükleme ekranını göster
-                withAnimation(.easeIn(duration: 0.3)) {
-                    isLoading = true
-                }
-                
-                // Uygulama başladığında otomatik kaydetmeyi başlat
-                sudokuModel.startAutoSave()
-                
-                // Sayacı sıfırla
-                sudokuModel.gameTime = 0
-                
-                // NotificationCenter dinleyicisi ekle
+                // NotificationCenter dinleyicileri ekle
                 setupNotificationObservers()
                 
-                // Yükleme ekranını gösterdikten sonra oyunu başlat
-                startLoadingSequence()
+                // Timer'ı başlat
+                startTimer()
             }
-            .onDisappear {
-                // Görünüm kaybolduğunda timer'ı durdur
-                stopTimer()
-                
-                // NotificationCenter dinleyicisini kaldır
-                NotificationCenter.default.removeObserver(self)
+            .onChange(of: lifecycleManager.isActive) { oldValue, newValue in
+                if newValue {
+                    print("Uygulama aktif duruma geldi, timer'ı başlat")
+                    startTimer()
+                } else {
+                    print("Uygulama arka plana geçti, timer'ı durdur")
+                    stopTimer()
+                    
+                    // Oyun durumunu kaydet
+                    sudokuModel.saveGameState()
+                }
             }
-            .fullScreenCover(isPresented: $showingWelcomeScreen) {
-                WelcomeView()
-            }
-            .preferredColorScheme(userColorScheme)
         }
     }
     
@@ -321,6 +282,72 @@ struct ContentView: View {
     }
     
     // MARK: - Alt görünümler
+    
+    private var gameView: some View {
+        VStack(spacing: 10) {
+            // Geliştirilmiş üst bilgi çubuğu
+            topBarView
+            
+            // Geliştirilmiş oyun bilgileri
+            gameInfoView
+            
+            // Not modu butonu
+            noteModeButton
+            
+            Spacer()
+            
+            // Geliştirilmiş Sudoku ızgarası
+            sudokuGridView
+            
+            Spacer()
+            
+            // Geliştirilmiş rakam seçici
+            numberPickerView
+        }
+        .transition(.opacity)
+        .sheet(isPresented: $showingHowToPlay) {
+            HowToPlayView()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(isPresented: $showingSettings, themeColor: Binding(
+                get: { self.selectedTheme },
+                set: { self.selectedThemeRaw = $0.rawValue }
+            ), sudokuModel: sudokuModel, userColorScheme: Binding(
+                get: { self.userColorScheme },
+                set: { 
+                    switch $0 {
+                    case .light: self.userColorSchemeRaw = "light"
+                    case .dark: self.userColorSchemeRaw = "dark"
+                    case .none: self.userColorSchemeRaw = "system"
+                    @unknown default: self.userColorSchemeRaw = "system"
+                    }
+                    UserDefaults.standard.synchronize()
+                }
+            ))
+        }
+        .sheet(isPresented: $showingDifficultyPicker) {
+            DifficultyPickerView(difficulty: $sudokuModel.difficulty, themeColor: themeColor)
+        }
+        .sheet(isPresented: $showingStats) {
+            StatsView(gameTime: sudokuModel.gameTime, mistakes: sudokuModel.mistakes, difficulty: sudokuModel.difficulty, themeColor: themeColor)
+        }
+        .alert(isPresented: $showingHint) {
+            Alert(
+                title: Text("İpucu"),
+                message: Text("Bir sonraki hamle için ipucu: \(getHintText())"),
+                dismissButton: .default(Text("Tamam"))
+            )
+        }
+        .alert(isPresented: $showingGameCompleteAlert) {
+            Alert(
+                title: Text("Tebrikler!"),
+                message: Text("Sudoku'yu \(formatTime(sudokuModel.gameTime)) sürede, \(sudokuModel.mistakes) hata ile tamamladınız!"),
+                dismissButton: .default(Text("Yeni Oyun")) {
+                    startNewGame()
+                }
+            )
+        }
+    }
     
     private var backgroundView: some View {
         ZStack {
@@ -515,7 +542,6 @@ struct ContentView: View {
                             blockCol: blockCol,
                             sudokuModel: sudokuModel,
                             selectedNumber: $selectedNumber,
-                            notes: $notes,
                             themeColor: themeColor,
                             isDarkMode: isDarkMode
                         )
@@ -549,11 +575,60 @@ struct ContentView: View {
         )
         .scaleEffect(sudokuModel.isShaking ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: sudokuModel.isShaking)
+        // Oyun tamamlandı animasyonu - geliştirilmiş versiyon
+        .scaleEffect(sudokuModel.isGameComplete ? 1.05 : 1.0)
         .rotation3DEffect(
             sudokuModel.isGameComplete ? Angle(degrees: 360) : Angle(degrees: 0),
             axis: (x: 0.0, y: 1.0, z: 0.0)
         )
-        .animation(.easeInOut(duration: 0.5), value: sudokuModel.isGameComplete)
+        .overlay(
+            ZStack {
+                // Parlama efekti
+                RadialGradient(
+                    gradient: Gradient(colors: [themeColor.opacity(0.8), themeColor.opacity(0.0)]),
+                    center: .center,
+                    startRadius: 5,
+                    endRadius: 200
+                )
+                .scaleEffect(sudokuModel.isGameComplete ? 1.0 : 0.0)
+                .opacity(sudokuModel.isGameComplete ? 0.8 : 0.0)
+                .animation(.easeInOut(duration: 1.0), value: sudokuModel.isGameComplete)
+                
+                // Tebrik yazısı
+                if sudokuModel.isGameComplete {
+                    VStack {
+                        Text("Tebrikler!")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .shadow(color: Color.black.opacity(0.5), radius: 3, x: 0, y: 1)
+                        
+                        Text("Sudoku'yu Tamamladınız")
+                            .font(.system(size: 20, weight: .medium, design: .rounded))
+                            .foregroundColor(.white)
+                            .shadow(color: Color.black.opacity(0.5), radius: 2, x: 0, y: 1)
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(themeColor.opacity(0.8))
+                            .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5)
+                    )
+                    .transition(.scale.combined(with: .opacity))
+                    .onAppear {
+                        // Konfeti göster
+                        withAnimation {
+                            showConfetti = true
+                        }
+                        // Haptik geri bildirim
+                        #if os(iOS)
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.success)
+                        #endif
+                    }
+                }
+            }
+        )
+        .animation(.spring(response: 0.7, dampingFraction: 0.6), value: sudokuModel.isGameComplete)
         .drawingGroup() // Metal hızlandırma için
     }
     
@@ -576,7 +651,7 @@ struct ContentView: View {
                         if let cell = sudokuModel.selectedCell, sudokuModel.isCellEditable(at: cell.row, col: cell.col) {
                             if noteMode {
                                 // Not modunda tüm notları temizle
-                                notes[cell.row][cell.col] = []
+                                sudokuModel.notes[cell.row][cell.col] = []
                             } else {
                                 // Normal modda sayıyı sil
                                 sudokuModel.grid[cell.row][cell.col] = nil
@@ -620,11 +695,42 @@ struct ContentView: View {
                 }
                 
                 if let selectedCell = sudokuModel.selectedCell {
-                    // Seçili hücreye sayı gir
-                    sudokuModel.enterNumber(number, at: selectedCell.row, col: selectedCell.col)
-                    
-                    // Sayı tamamlandı mı kontrol et
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    if sudokuModel.isCellEditable(at: selectedCell.row, col: selectedCell.col) {
+                        // Not modu aktifse, not ekle/çıkar
+                        if noteMode {
+                            sudokuModel.toggleNote(row: selectedCell.row, col: selectedCell.col, number: number)
+                        } else {
+                            // Sayıyı yerleştir
+                            let isValid = sudokuModel.placeNumber(number, at: selectedCell)
+                            
+                            // Rakam girişi animasyonu
+                            sudokuModel.successfulNumberEnter = isValid
+                            sudokuModel.numberEnterAnimationCell = selectedCell
+                            
+                            // 0.3 saniye sonra animasyonu sıfırla
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                sudokuModel.numberEnterAnimationCell = nil
+                            }
+                            
+                            // Sayı hatalıysa sallama animasyonu
+                            if !isValid {
+                                withAnimation(.default) {
+                                    sudokuModel.isShaking = true
+                                    
+                                    // 0.3 saniye sonra sallama animasyonunu kapat
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                        sudokuModel.isShaking = false
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Oyun tamamlandı mı kontrol et
+                        if sudokuModel.checkGameCompletion() {
+                            showConfetti = true
+                            isGameOver = true
+                        }
+                        
                         updateCompletedNumbers()
                     }
                 }
@@ -677,7 +783,7 @@ struct ContentView: View {
                 }
             }
             .scaleEffect(isSelected ? 1.1 : 1.0)
-            .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
+            .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isSelected)
         }
         .buttonStyle(PlainButtonStyle())
         .disabled(isCompleted)
@@ -753,11 +859,14 @@ struct ContentView: View {
         sudokuModel.gameTime = 0
         
         // Yeni zamanlayıcı oluştur - 1 saniye aralıklarla
-        timer = Timer(timeInterval: 1.0, repeats: true) { [self] _ in
-            // SudokuModel'deki timer'ı durdur, çünkü orada da bir timer çalışıyor
-            sudokuModel.stopTimer()
-            // Sadece buradaki timer'ı kullan
-            sudokuModel.gameTime += 1
+        timer = Timer(timeInterval: 1.0, repeats: true) { _ in
+            // Eğer oyun bitmişse timer'ı durduralım
+            if self.sudokuModel.isGameComplete {
+                self.stopTimer()
+                return
+            }
+            // Süreyi arttır
+            self.sudokuModel.gameTime += 1
         }
         // Ana thread'de çalıştır ve daha doğru zamanlama için common modunu kullan
         RunLoop.main.add(timer!, forMode: .common)
@@ -766,6 +875,7 @@ struct ContentView: View {
     private func stopTimer() {
         timer?.invalidate()
         timer = nil
+        // SudokuModel içindeki timer'ı da durduralım
         sudokuModel.stopTimer()
     }
     
@@ -811,7 +921,7 @@ struct ContentView: View {
                 // UI güncellemelerini ana thread'de yap
                 DispatchQueue.main.async {
                     // Önce UI güncellemelerini yap
-                    self.notes = newNotes
+                    self.sudokuModel.notes = newNotes
                     self.resetTimer()
                     self.completedNumbers = []
                     
@@ -835,7 +945,6 @@ struct SudokuBlock: View {
     let blockCol: Int
     @ObservedObject var sudokuModel: SudokuModel
     @Binding var selectedNumber: Int?
-    @Binding var notes: [[[Int]]]
     let themeColor: Color
     let isDarkMode: Bool
     
@@ -874,7 +983,7 @@ struct SudokuBlock: View {
                             row: actualRow,
                             col: actualCol,
                             sudokuModel: sudokuModel,
-                            notes: notes[actualRow][actualCol],
+                            notes: sudokuModel.getNotes(row: actualRow, col: actualCol),
                             themeColor: themeColor,
                             isDarkMode: isDarkMode,
                             selectedNumber: $selectedNumber
@@ -958,6 +1067,13 @@ struct SudokuCellView: View {
         sudokuModel.isCellEditable(at: row, col: col)
     }
     
+    private var hasEnterAnimation: Bool {
+        if let animCell = sudokuModel.numberEnterAnimationCell {
+            return animCell.row == row && animCell.col == col
+        }
+        return false
+    }
+    
     private var backgroundColor: Color {
         if isSelected {
             return themeColor.opacity(0.3)
@@ -998,110 +1114,60 @@ struct SudokuCellView: View {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(backgroundColor)
                     .frame(width: cellSize, height: cellSize)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(isSelected ? themeColor : Color.clear, lineWidth: 2)
+                    )
+                    // Seçim animasyonu: Dalgalanma ve parlama efekti
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(isSelected ? themeColor.opacity(0.8) : Color.clear, lineWidth: 2)
+                            .scaleEffect(isSelected ? 1.1 : 1.0)
+                    )
+                    // Hücre seçildiğinde animasyon
+                    .scaleEffect(isSelected ? 1.02 : 1.0)
+                    .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isSelected)
+                    // Hücre seçildiğinde satır ve sütun vurgusu
+                    .shadow(color: isSelected ? themeColor.opacity(0.5) : Color.clear, radius: 2)
                 
-                // Sayı olan hücreler için özel arka plan - SADECE SEÇİLİ OLDUĞUNDA
-                if isSelected && value != nil {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(
-                            isDarkMode ? 
-                            (isEditable ? Color.gray.opacity(0.3) : Color.gray.opacity(0.4)) : 
-                            (isEditable ? Color.white : Color.white.opacity(0.95))
+                // Değer veya notlar
+                if let value = value {
+                    Text("\(value)")
+                        .font(.system(size: fontSize, weight: .semibold, design: .rounded))
+                        .foregroundColor(textColor)
+                        // Sayı girildiğinde animasyon
+                        .scaleEffect(hasEnterAnimation ? (sudokuModel.successfulNumberEnter ? 1.2 : 0.9) : 1.0)
+                        .opacity(hasEnterAnimation ? (sudokuModel.successfulNumberEnter ? 0.8 : 1.0) : 1.0)
+                        .animation(.spring(response: 0.2, dampingFraction: 0.8), value: sudokuModel.numberEnterAnimationCell != nil)
+                        // Sayı uyumlu olmadığında sallama animasyonu
+                        .modifier(ShakeEffect(animate: sudokuModel.isShaking && isSelected))
+                        // Hata veya başarılı giriş için animasyon
+                        .overlay(
+                            Circle()
+                                .fill(sudokuModel.successfulNumberEnter ? Color.green.opacity(0.3) : Color.red.opacity(0.3))
+                                .scaleEffect(hasEnterAnimation ? 1.5 : 0.0)
+                                .opacity(hasEnterAnimation ? 0.0 : 0.5)
+                                .animation(.easeOut(duration: 0.3), value: hasEnterAnimation)
+                                .allowsHitTesting(false)
                         )
-                        .shadow(
-                            color: themeColor.opacity(0.6),
-                            radius: 4,
-                            x: 0,
-                            y: 2
-                        )
-                        .frame(width: cellSize - 2, height: cellSize - 2)
+                } else if !notes.isEmpty {
+                    notesGrid
                 }
-                
-                // Aynı sayılar için özel arka plan
-                else if isHighlightedNumber && value != nil {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(
-                            isDarkMode ? 
-                            (isEditable ? Color.gray.opacity(0.2) : Color.gray.opacity(0.3)) : 
-                            (isEditable ? Color.white.opacity(0.9) : Color.white.opacity(0.8))
-                        )
-                        .shadow(
-                            color: themeColor.opacity(0.3),
-                            radius: 2,
-                            x: 0,
-                            y: 1
-                        )
-                        .frame(width: cellSize - 2, height: cellSize - 2)
-                }
-                
-                cellContent
             }
-        }
-        .buttonStyle(PlainButtonStyle())
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(
-                    isSelected ? themeColor : (isDarkMode ? Color.white.opacity(0.2) : Color.black.opacity(0.2)), 
-                    lineWidth: isSelected ? 2 : 0.5
-                )
-        )
-        .scaleEffect(isSelected ? 1.05 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
-    }
-    
-    @ViewBuilder
-    private var cellContent: some View {
-        if let value = value {
-            // Ana sayı - daha belirgin
-            Text("\(value)")
-                .font(.system(size: fontSize * 1.2, weight: isEditable ? .semibold : .bold, design: .rounded))
-                .foregroundColor(textColor)
-                .opacity(isHighlightedNumber || isSelected ? 1.0 : 0.9)
-                .shadow(color: isSelected ? themeColor.opacity(0.7) : (isHighlightedNumber ? themeColor.opacity(0.3) : Color.clear), radius: isSelected ? 2 : 0.5)
-                .scaleEffect(isSelected ? 1.2 : (isHighlightedNumber ? 1.1 : 1.0))
-                .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
-                // Sayıların etrafına ince bir kontur ekle
-                .overlay(
-                    Text("\(value)")
-                        .font(.system(size: fontSize * 1.2, weight: isEditable ? .semibold : .bold, design: .rounded))
-                        .foregroundColor(isDarkMode ? Color.black.opacity(0.5) : Color.white.opacity(0.5))
-                        .opacity(0.8)
-                        .scaleEffect(isSelected ? 1.2 : (isHighlightedNumber ? 1.1 : 1.0))
-                        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
-                        .blur(radius: 1.5)
-                        .allowsHitTesting(false)
-                )
-                // Sayıların altına gölge ekle
-                .background(
-                    Text("\(value)")
-                        .font(.system(size: fontSize * 1.2, weight: isEditable ? .semibold : .bold, design: .rounded))
-                        .foregroundColor(isDarkMode ? Color.white.opacity(0.2) : Color.black.opacity(0.2))
-                        .offset(x: 1, y: 1)
-                        .blur(radius: 1.0)
-                        .scaleEffect(isSelected ? 1.2 : (isHighlightedNumber ? 1.1 : 1.0))
-                        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSelected)
-                        .allowsHitTesting(false)
-                )
-        } else if !notes.isEmpty {
-            // Notlar
-            notesGrid
         }
     }
     
     private var notesGrid: some View {
-        // Daha verimli not gösterimi - LazyVGrid yerine manuel grid
-        VStack(spacing: 0) {
-            ForEach(0..<3) { row in
-                HStack(spacing: 0) {
-                    ForEach(0..<3) { col in
-                        let number = row * 3 + col + 1
-                        if notes.contains(number) {
-                            Text("\(number)")
+        // Notları 3x3 grid olarak göster
+        VStack(spacing: 1) {
+            ForEach(0..<3) { rowIdx in
+                HStack(spacing: 1) {
+                    ForEach(0..<3) { colIdx in
+                        let num = rowIdx * 3 + colIdx + 1
+                        if notes.contains(num) {
+                            Text("\(num)")
                                 .font(.system(size: notesFontSize))
-                                .foregroundColor(
-                                    number == selectedNumber ? 
-                                    (isDarkMode ? themeColor.opacity(0.9) : themeColor.opacity(0.8)) : 
-                                    (isDarkMode ? Color.white.opacity(0.6) : Color.black.opacity(0.6))
-                                )
+                                .foregroundColor(isDarkMode ? Color.white.opacity(0.6) : Color.black.opacity(0.6))
                                 .frame(width: notesItemSize, height: notesItemSize)
                         } else {
                             Color.clear
@@ -1241,44 +1307,105 @@ struct StatsView: View {
     }
 }
 
+// Konfeti efekti için view
 struct ConfettiView: View {
-    @State private var isAnimating = false
-    let colors: [Color] = [.red, .blue, .green, .yellow, .purple, .orange]
-    let confettiCount = 100
+    let colors: [Color] = [.red, .blue, .green, .yellow, .pink, .purple, .orange]
+    @State private var confettiPieces: [ConfettiPiece] = []
+    let pieceCount = 100
+    
+    struct ConfettiPiece: Identifiable {
+        let id = UUID()
+        let color: Color
+        var position: CGPoint
+        let rotation: Double
+        let size: CGFloat
+        let delay: Double
+    }
     
     var body: some View {
         ZStack {
-            ForEach(0..<confettiCount, id: \.self) { index in
-                ConfettiPiece(color: colors[index % colors.count], isAnimating: $isAnimating)
+            ForEach(confettiPieces) { piece in
+                Rectangle()
+                    .fill(piece.color)
+                    .frame(width: piece.size, height: piece.size * 3)
+                    .position(piece.position)
+                    .rotationEffect(.degrees(piece.rotation))
+                    .opacity(0)
+                    .animation(
+                        Animation.timingCurve(0.2, 0.8, 0.5, 1)
+                            .delay(piece.delay)
+                            .speed(0.7)
+                            .repeatForever(autoreverses: false),
+                        value: UUID()
+                    )
             }
         }
         .onAppear {
-            isAnimating = true
+            confettiPieces = (0..<pieceCount).map { _ in
+                let screenWidth = UIScreen.main.bounds.width
+                
+                return ConfettiPiece(
+                    color: colors.randomElement()!,
+                    position: CGPoint(
+                        x: CGFloat.random(in: 0...screenWidth),
+                        y: CGFloat.random(in: -50...0)
+                    ),
+                    rotation: Double.random(in: 0...360),
+                    size: CGFloat.random(in: 5...12),
+                    delay: Double.random(in: 0...1)
+                )
+            }
+            
+            // Konfeti animasyonu
+            for (index, _) in confettiPieces.enumerated() {
+                withAnimation(Animation.easeOut(duration: Double.random(in: 3...5)).delay(confettiPieces[index].delay)) {
+                    confettiPieces[index].position.y = UIScreen.main.bounds.height + 50
+                }
+            }
         }
     }
 }
 
-struct ConfettiPiece: View {
-    let color: Color
-    @Binding var isAnimating: Bool
-    @State private var xPosition: CGFloat = 0
-    @State private var yPosition: CGFloat = -100
-    @State private var rotation: Double = 0
+// Sallama animasyonu için özel modifier
+struct ShakeEffect: ViewModifier {
+    var animate: Bool
+    
+    func body(content: Content) -> some View {
+        content
+            .offset(x: animate ? CGFloat.random(in: -2...2) : 0, y: animate ? CGFloat.random(in: -1...1) : 0)
+            .animation(animate ? .linear(duration: 0.1).repeatCount(3, autoreverses: true) : .default, value: animate)
+    }
+}
+
+// LoadingView sınıfını ekleyin
+struct LoadingView: View {
+    let themeColor: Color
+    let isDarkMode: Bool
+    @State private var isAnimating = false
+    @State private var rotationAngle = 0.0
     
     var body: some View {
-        Rectangle()
-            .fill(color)
-            .frame(width: CGFloat.random(in: 5...10), height: CGFloat.random(in: 5...10))
-            .position(x: xPosition, y: yPosition)
-            .rotationEffect(.degrees(rotation))
-            .opacity(yPosition > UIScreen.main.bounds.height * 0.8 ? 0 : 1)
-            .onAppear {
-                withAnimation(Animation.linear(duration: Double.random(in: 2...4)).repeatForever(autoreverses: false)) {
-                    self.xPosition = CGFloat.random(in: 0...UIScreen.main.bounds.width)
-                    self.yPosition = UIScreen.main.bounds.height + 50
-                    self.rotation = Double.random(in: 0...360) * 5
-                }
+        ZStack {
+            RoundedRectangle(cornerRadius: 20)
+                .fill(isDarkMode ? Color.black.opacity(0.8) : Color.white.opacity(0.9))
+                .shadow(color: themeColor.opacity(0.3), radius: 15, x: 0, y: 5)
+                .frame(width: 300, height: 250)
+            
+            VStack(spacing: 20) {
+                Text("Sudoku Hazırlanıyor...")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(isDarkMode ? .white : themeColor)
+                
+                // Dönen animasyon
+                Circle()
+                    .trim(from: 0, to: 0.7)
+                    .stroke(themeColor, lineWidth: 6)
+                    .frame(width: 70, height: 70)
+                    .rotationEffect(Angle(degrees: isAnimating ? 360 : 0))
+                    .animation(Animation.linear(duration: 2).repeatForever(autoreverses: false), value: isAnimating)
+                    .onAppear { isAnimating = true }
             }
+        }
     }
 }
 
@@ -1373,91 +1500,6 @@ struct SettingsView: View {
             }
             .padding(.bottom, 10)
             
-            // Koyu/Açık mod ayarı
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Görünüm Modu")
-                    .font(.headline)
-                    .foregroundColor(isDarkMode ? .white : .black)
-                
-                HStack(spacing: 15) {
-                    Button(action: {
-                        withAnimation {
-                            userColorScheme = .light
-                            userColorSchemeRaw = "light"
-                            UserDefaults.standard.synchronize()
-                        }
-                    }) {
-                        HStack {
-                            Image(systemName: "sun.max.fill")
-                                .font(.system(size: 18))
-                            Text("Açık Mod")
-                        }
-                        .padding(.horizontal, 15)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(userColorScheme == .light ? 
-                                      themeColor.mainColor.opacity(0.3) : 
-                                      (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
-                                .foregroundColor(userColorScheme == .light ? 
-                                                themeColor.mainColor : 
-                                                (isDarkMode ? .white : .black))
-                        )
-                    }
-                    
-                    Button(action: {
-                        withAnimation {
-                            userColorScheme = .dark
-                            userColorSchemeRaw = "dark"
-                            UserDefaults.standard.synchronize()
-                        }
-                    }) {
-                        HStack {
-                            Image(systemName: "moon.fill")
-                                .font(.system(size: 18))
-                            Text("Koyu Mod")
-                        }
-                        .padding(.horizontal, 15)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(userColorScheme == .dark ? 
-                                      themeColor.mainColor.opacity(0.3) : 
-                                      (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
-                                .foregroundColor(userColorScheme == .dark ? 
-                                                themeColor.mainColor : 
-                                                (isDarkMode ? .white : .black))
-                        )
-                    }
-                    
-                    Button(action: {
-                        withAnimation {
-                            userColorScheme = nil
-                            userColorSchemeRaw = "system"
-                            UserDefaults.standard.synchronize()
-                        }
-                    }) {
-                        HStack {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 18))
-                            Text("Sistem")
-                        }
-                        .padding(.horizontal, 15)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(userColorScheme == nil ? 
-                                      themeColor.mainColor.opacity(0.3) : 
-                                      (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
-                                .foregroundColor(userColorScheme == nil ? 
-                                                themeColor.mainColor : 
-                                                (isDarkMode ? .white : .black))
-                        )
-                    }
-                }
-            }
-            .padding(.bottom, 10)
-            
             // Yeni oyun butonu
             Button(action: {
                 withAnimation {
@@ -1487,150 +1529,6 @@ struct SettingsView: View {
                 .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
         )
         .padding()
-    }
-}
-
-struct LoadingView: View {
-    let themeColor: Color
-    let isDarkMode: Bool
-    @State private var isAnimating = false
-    @State private var rotationAngle = 0.0
-    @State private var scaleEffect = 1.0
-    @State private var opacity = 0.7
-    @State private var progressValue = 0.0
-    @State private var tipIndex = 0
-    
-    // Yükleme ekranında gösterilecek ipuçları
-    private let tips = [
-        "Önce kolay olan hücreleri doldurun",
-        "Eleme yöntemini kullanarak ilerleyin",
-        "Not alma özelliğini kullanın",
-        "Aynı satır ve sütunda aynı sayı olamaz",
-        "Her 3x3 kutuda 1-9 arası sayılar birer kez olmalı",
-        "Zorlandığınızda ipucu alabilirsiniz",
-        "Tema rengini ayarlardan değiştirebilirsiniz",
-        "Açık/koyu mod arasında geçiş yapabilirsiniz"
-    ]
-    
-    var body: some View {
-        ZStack {
-            // Arka plan efekti
-            RoundedRectangle(cornerRadius: 20)
-                .fill(isDarkMode ? 
-                      Color.black.opacity(0.8) : 
-                      Color.white.opacity(0.9))
-                .shadow(color: themeColor.opacity(0.3), radius: 15, x: 0, y: 5)
-                .frame(width: 300, height: 250)
-            
-            VStack(spacing: 20) {
-                Text("Sudoku Hazırlanıyor...")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundColor(isDarkMode ? .white : themeColor)
-                    .shadow(color: themeColor.opacity(0.3), radius: 2, x: 0, y: 1)
-                    .scaleEffect(scaleEffect)
-                    .opacity(opacity)
-                
-                ZStack {
-                    // Arka plan dairesi
-                    Circle()
-                        .stroke(lineWidth: 6)
-                        .frame(width: 70, height: 70)
-                        .foregroundColor(themeColor.opacity(0.2))
-                    
-                    // Dönen daire
-                    Circle()
-                        .trim(from: 0, to: 0.7)
-                        .stroke(
-                            AngularGradient(
-                                gradient: Gradient(colors: [themeColor.opacity(0.5), themeColor]),
-                                center: .center
-                            ),
-                            style: StrokeStyle(lineWidth: 6, lineCap: .round)
-                        )
-                        .frame(width: 70, height: 70)
-                        .rotationEffect(Angle(degrees: rotationAngle))
-                    
-                    // İç daire
-                    Circle()
-                        .fill(themeColor.opacity(0.3))
-                        .frame(width: 20, height: 20)
-                        .scaleEffect(scaleEffect)
-                    
-                    // Sudoku ızgara simgesi - Grid yerine manuel ızgara
-                    ZStack {
-                        Rectangle()
-                            .fill(Color.clear)
-                            .frame(width: 30, height: 30)
-                        
-                        // Manuel ızgara oluşturma
-                        VStack(spacing: 2) {
-                            ForEach(0..<3, id: \.self) { row in
-                                HStack(spacing: 2) {
-                                    ForEach(0..<3, id: \.self) { col in
-                                        RoundedRectangle(cornerRadius: 1)
-                                            .fill(isDarkMode ? Color.white : themeColor)
-                                            .opacity(0.8)
-                                            .frame(width: 8, height: 8)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                .scaleEffect(0.8)
-                
-                // İpucu metni
-                Text(tips[tipIndex])
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(isDarkMode ? Color.white.opacity(0.9) : Color.black.opacity(0.7))
-                    .multilineTextAlignment(.center)
-                    .frame(height: 40)
-                    .frame(width: 250)
-                    .transition(.opacity)
-                    .id("tip-\(tipIndex)") // Animasyon için benzersiz ID
-                
-                // İlerleme göstergesi
-                ProgressView(value: progressValue, total: 1.0)
-                    .progressViewStyle(LinearProgressViewStyle(tint: themeColor))
-                    .frame(width: 200)
-                    .scaleEffect(0.8)
-            }
-            .padding(30)
-        }
-        .onAppear {
-            // Performans iyileştirmeleri için
-            DispatchQueue.main.async {
-                // Animasyonları başlat
-                withAnimation(Animation.linear(duration: 2).repeatForever(autoreverses: false)) {
-                    rotationAngle = 360
-                }
-                
-                withAnimation(Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                    scaleEffect = 1.1
-                    opacity = 1.0
-                }
-                
-                // İlerleme çubuğu animasyonu
-                withAnimation(Animation.easeInOut(duration: 2.5)) {
-                    progressValue = 1.0
-                }
-                
-                // İpuçlarını değiştir
-                startTipTimer()
-                
-                isAnimating = true
-            }
-        }
-        .drawingGroup() // Metal hızlandırma için
-    }
-    
-    // İpuçlarını değiştiren zamanlayıcı
-    private func startTipTimer() {
-        Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { timer in
-            withAnimation(.easeInOut(duration: 0.5)) {
-                tipIndex = (tipIndex + 1) % tips.count
-            }
-        }
     }
 }
 

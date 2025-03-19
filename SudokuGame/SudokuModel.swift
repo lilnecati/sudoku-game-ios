@@ -12,11 +12,19 @@ class SudokuModel: ObservableObject {
     
     @Published var grid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
     @Published var originalGrid: [[Int?]] = Array(repeating: Array(repeating: nil, count: 9), count: 9)
-    @Published var selectedCell: (row: Int, col: Int)? = nil
+    @Published var selectedCell: (row: Int, col: Int)? = nil {
+        didSet {
+            // Hücre değiştiğinde animasyon tetikleyicisini güncelle
+            cellSelectionAnimationTrigger = UUID()
+        }
+    }
+    @Published var cellSelectionAnimationTrigger = UUID()
     @Published var isShaking = false
     @Published var gameTime: TimeInterval = 0
     @Published var mistakes: Int = 0
     @Published var isGameComplete: Bool = false
+    @Published var numberEnterAnimationCell: (row: Int, col: Int)? = nil
+    @Published var successfulNumberEnter = false
     
     private var timer: Timer?
     private var solution: [[Int]] = Array(repeating: Array(repeating: 0, count: 9), count: 9)
@@ -24,6 +32,15 @@ class SudokuModel: ObservableObject {
     // Performans için önbelleğe alınmış değerler
     private var validMovesCache: [String: Bool] = [:]
     private var cellEditabilityCache: [String: Bool] = [:]
+    
+    // Oyuncu notları
+    @Published var notes: [[[Int]]] = Array(repeating: Array(repeating: [], count: 9), count: 9)
+    
+    // Önbelleği temizleme
+    private func clearCache() {
+        validMovesCache.removeAll(keepingCapacity: true)
+        cellEditabilityCache.removeAll(keepingCapacity: true)
+    }
     
     // Zorluk seviyesi için UserDefaults kullanımı
     @Published var difficulty: Difficulty {
@@ -34,7 +51,7 @@ class SudokuModel: ObservableObject {
     }
     
     // Oyun durumunu kaydetme
-    private func saveGameState() {
+    func saveGameState() {
         // Grid'i kaydet
         let gridData = try? JSONEncoder().encode(grid)
         UserDefaults.standard.set(gridData, forKey: "currentGrid")
@@ -115,8 +132,7 @@ class SudokuModel: ObservableObject {
     // Yeni oyun hazırlığı - arka planda çalıştırılacak ağır işlemler
     func prepareNewGame() {
         // Önbelleği temizle
-        validMovesCache.removeAll()
-        cellEditabilityCache.removeAll()
+        clearCache()
         
         // Yeni çözüm oluştur (en yoğun işlem)
         generateSolution()
@@ -177,7 +193,7 @@ class SudokuModel: ObservableObject {
         }
     }
     
-    // Eski generateNewGame fonksiyonu - geriye dönük uyumluluk için
+    // Yeni oyun oluştur ve başlat
     func generateNewGame() {
         prepareNewGame()
         finalizeNewGame()
@@ -216,46 +232,46 @@ class SudokuModel: ObservableObject {
         return result
     }
     
-    func isValidMove(number: Int, at row: Int, col: Int) -> Bool {
-        let key = "\(row)-\(col)-\(number)"
+    // Hızlı performans için isValid metodu - cache kullanarak
+    func isValid(row: Int, col: Int, num: Int) -> Bool {
+        let cacheKey = "\(row)-\(col)-\(num)"
         
-        // Önbellekte varsa, önbellekten döndür
-        if let cached = validMovesCache[key] {
-            return cached
+        // Önbellekte varsa, doğrudan sonucu döndür
+        if let cachedResult = validMovesCache[cacheKey] {
+            return cachedResult
         }
         
-        // Performans için daha hızlı kontroller
-        // Satır kontrolü - daha hızlı implementasyon
-        for c in 0..<9 where c != col {
-            if grid[row][c] == number {
-                validMovesCache[key] = false
+        // Satırı kontrol et
+        for i in 0..<9 {
+            if grid[row][i] == num {
+                validMovesCache[cacheKey] = false
                 return false
             }
         }
         
-        // Sütun kontrolü - daha hızlı implementasyon
-        for r in 0..<9 where r != row {
-            if grid[r][col] == number {
-                validMovesCache[key] = false
+        // Sütunu kontrol et
+        for i in 0..<9 {
+            if grid[i][col] == num {
+                validMovesCache[cacheKey] = false
                 return false
             }
         }
         
-        // Blok kontrolü - daha hızlı implementasyon
-        let blockRow = (row / 3) * 3
-        let blockCol = (col / 3) * 3
+        // 3x3 bloğu kontrol et
+        let boxRow = row / 3 * 3
+        let boxCol = col / 3 * 3
         
-        for r in blockRow..<blockRow+3 {
-            for c in blockCol..<blockCol+3 where (r != row || c != col) {
-                if grid[r][c] == number {
-                    validMovesCache[key] = false
+        for i in 0..<3 {
+            for j in 0..<3 {
+                if grid[boxRow + i][boxCol + j] == num {
+                    validMovesCache[cacheKey] = false
                     return false
                 }
             }
         }
         
         // Geçerli hamle
-        validMovesCache[key] = true
+        validMovesCache[cacheKey] = true
         return true
     }
     
@@ -359,13 +375,14 @@ class SudokuModel: ObservableObject {
         return true
     }
     
-    func checkGameCompletion() {
+    // Oyunun tamamlanıp tamamlanmadığını kontrol et ve true/false döndür
+    func checkGameCompletion() -> Bool {
         // Tüm hücreler dolu mu kontrol et
         for row in 0..<9 {
             for col in 0..<9 {
                 if grid[row][col] == nil {
                     isGameComplete = false
-                    return
+                    return false
                 }
             }
         }
@@ -374,13 +391,14 @@ class SudokuModel: ObservableObject {
         for i in 0..<9 {
             if !isValidRow(i) || !isValidColumn(i) || !isValidBlock(i / 3, i % 3) {
                 isGameComplete = false
-                return
+                return false
             }
         }
         
         // Oyun tamamlandı
         isGameComplete = true
         timer?.invalidate()
+        return true
     }
     
     private func isValidRow(_ row: Int) -> Bool {
@@ -424,24 +442,41 @@ class SudokuModel: ObservableObject {
         return seen.count == 9
     }
     
-    func enterNumber(_ number: Int, at row: Int, col: Int) {
-        // Hücre düzenlenebilir değilse işlem yapma
-        guard isCellEditable(at: row, col: col) else { return }
+    func placeNumber(_ number: Int, at cell: (row: Int, col: Int)) -> Bool {
+        let (row, col) = cell
+        
+        // Hücre düzenlenebilir mi kontrol et
+        if !isCellEditable(at: row, col: col) {
+            return false
+        }
         
         // Geçerli bir hamle mi kontrol et
-        if isValidMove(number: number, at: row, col: col) {
-            grid[row][col] = number
-            checkGameCompletion()
+        if isValid(row: row, col: col, num: number) {
+            // Animasyon için hücreyi belirle
+            numberEnterAnimationCell = (row: row, col: col)
             
-            // Değişikliği kaydet
+            // Sayıyı yerleştir
+            grid[row][col] = number
+            
+            // Başarılı giriş animasyonu
+            successfulNumberEnter = true
+            
+            // Oyun durumunu kaydet
             saveGameState()
+            
+            return true
         } else {
-            // Geçersiz hamle
-            shake()
+            // Hata animasyonu ve sayacı
             mistakes += 1
             
-            // Hata sayısını kaydet
+            // Oyun durumunu kaydet
             saveGameState()
+            
+            // Animasyon için gerekli değişkenleri ayarla
+            numberEnterAnimationCell = (row: row, col: col)
+            successfulNumberEnter = false
+            
+            return false
         }
     }
     
@@ -451,5 +486,29 @@ class SudokuModel: ObservableObject {
         Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
             self?.saveGameState()
         }
+    }
+    
+    // Not ekle/çıkar (toggle) metodu
+    func toggleNote(row: Int, col: Int, number: Int) {
+        guard isCellEditable(at: row, col: col) && grid[row][col] == nil else { return }
+        
+        if notes[row][col].contains(number) {
+            // Not zaten varsa, kaldır
+            notes[row][col].removeAll { $0 == number }
+        } else {
+            // Not yoksa, ekle
+            notes[row][col].append(number)
+            
+            // Sıralama için
+            notes[row][col].sort()
+        }
+        
+        // Oyun durumunu kaydet
+        saveGameState()
+    }
+    
+    // Belirli bir hücredeki notları getir
+    func getNotes(row: Int, col: Int) -> [Int] {
+        return notes[row][col]
     }
 } 
