@@ -123,6 +123,23 @@ struct ContentView: View {
     private let buttonSize: CGFloat = UIScreen.main.bounds.width < 375 ? 40 : 45
     private let numberButtonPadding: CGFloat = UIScreen.main.bounds.width < 375 ? 4 : 6
     private let numberButtonFontSize: CGFloat = UIScreen.main.bounds.width < 375 ? 20 : 22
+    private let cellSize: CGFloat = {
+        let screenWidth = UIScreen.main.bounds.width
+        let screenHeight = UIScreen.main.bounds.height
+        let minDimension = min(screenWidth, screenHeight)
+        
+        if screenWidth >= 428 { // iPhone Pro Max modeller
+            return minDimension / 9.5
+        } else if screenWidth >= 390 { // iPhone Pro modeller
+            return minDimension / 10
+        } else { // iPhone mini ve standart modeller
+            return minDimension / 10.5
+        }
+    }()
+    
+    private var backgroundColor: Color {
+        isDarkMode ? Color.gray.opacity(0.2) : Color.white.opacity(0.9)
+    }
     
     private var selectedTheme: ThemeColor {
         ThemeColor(rawValue: selectedThemeRaw) ?? .blue
@@ -149,78 +166,72 @@ struct ContentView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                // Arka plan
-                (isDarkMode ? Color.black : Color.gray.opacity(0.1))
-                    .ignoresSafeArea()
-                
-                // Ana içerik
-                VStack {
+        ZStack {
+            // Arka plan
+            backgroundView
+            
+            if shouldShowWelcomeScreen {
+                // Ana sayfa (karşılama ekranı)
+                WelcomeView()
+            } else {
+                // Oyun ekranı
+                ZStack {
+                    // Yükleme ekranı - isLoading true olduğunda göster
                     if isLoading {
+                        // Arka planı tamamen kaplayan yarı saydam overlay
+                        Color.black.opacity(0.5)
+                            .edgesIgnoringSafeArea(.all)
+                            .transition(.opacity)
+                            .zIndex(2) // Üst katmanda göster
+                            
                         LoadingView(themeColor: themeColor, isDarkMode: isDarkMode)
-                            .transition(.opacity.combined(with: .scale))
-                            .animation(.easeInOut(duration: 0.5), value: isLoading)
-                    } else if shouldShowWelcomeScreen {
-                        WelcomeView()
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .leading),
-                                removal: .move(edge: .trailing)
-                            ))
-                            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: shouldShowWelcomeScreen)
+                            .transition(.opacity)
+                            .zIndex(3) // En üst katmanda göster
                     } else {
+                        // Oyun görünümü - sadece yükleme ekranı gösterilmiyorsa göster
                         gameView
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .trailing),
-                                removal: .move(edge: .leading)
-                            ))
-                            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: shouldShowWelcomeScreen)
+                            .zIndex(1)
+                    }
+                    
+                    // Konfeti - oyun tamamlandığında göster
+                    if showConfetti {
+                        ConfettiView()
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                            .zIndex(4) // En üst katmanda göster
                     }
                 }
-                
-                // Konfeti efekti
-                if showConfetti {
-                    ConfettiView()
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                        .animation(.easeIn(duration: 0.5), value: showConfetti)
-                        .zIndex(100)
-                        .onAppear {
-                            // 5 saniye sonra konfeti efektini kapat
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                                withAnimation {
-                                    showConfetti = false
-                                }
-                            }
-                        }
-                }
             }
-            .navigationBarHidden(true)
-            .preferredColorScheme(userColorScheme)
-            .onAppear {
-                // Uygulamanın ilk açılışında welcome ekranını göster
-                if isFirstLaunch {
-                    shouldShowWelcomeScreen = true
-                    isFirstLaunch = false
-                }
-                
-                // NotificationCenter dinleyicileri ekle
-                setupNotificationObservers()
-                
-                // Timer'ı başlat
+        }
+        .preferredColorScheme(userColorScheme)
+        .onAppear {
+            // Uygulamanın ilk açılışında welcome ekranını göster
+            if isFirstLaunch {
+                shouldShowWelcomeScreen = true
+                isFirstLaunch = false
+            } else {
+                // Her zaman uygulamayı açarken welcome ekranını göster
+                shouldShowWelcomeScreen = true
+            }
+            
+            // NotificationCenter dinleyicileri ekle
+            setupNotificationObservers()
+            
+            // Welcome ekranı gösteriliyorsa timer'ı başlatma
+            if !shouldShowWelcomeScreen {
                 startTimer()
             }
-            .onChange(of: lifecycleManager.isActive) { oldValue, newValue in
-                if newValue {
-                    print("Uygulama aktif duruma geldi, timer'ı başlat")
-                    startTimer()
-                } else {
-                    print("Uygulama arka plana geçti, timer'ı durdur")
-                    stopTimer()
-                    
-                    // Oyun durumunu kaydet
-                    sudokuModel.saveGameState()
-                }
+        }
+        .onChange(of: lifecycleManager.isActive) { _, newValue in
+            if newValue {
+                print("Uygulama aktif duruma geldi, timer'ı başlat")
+                startTimer()
+            } else {
+                print("Uygulama arka plana geçti, timer'ı durdur")
+                stopTimer()
+                
+                // Oyun durumunu kaydet
+                sudokuModel.saveGameState()
             }
         }
     }
@@ -385,7 +396,13 @@ struct ContentView: View {
             Button(action: {
                 // Ana menüye dön
                 stopTimer()
-                showingWelcomeScreen = true
+                shouldShowWelcomeScreen = true
+                
+                // Zorla UI yenileme için
+                DispatchQueue.main.async {
+                    // Welcome ekranını göstermeyi zorla
+                    self.shouldShowWelcomeScreen = true
+                }
             }) {
                 HStack(spacing: 5) {
                     Image(systemName: "house.fill")
@@ -575,8 +592,10 @@ struct ContentView: View {
         )
         .scaleEffect(sudokuModel.isShaking ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: sudokuModel.isShaking)
-        // Oyun tamamlandı animasyonu - geliştirilmiş versiyon
+        // Ölçeklendirme animasyonu
         .scaleEffect(sudokuModel.isGameComplete ? 1.05 : 1.0)
+        
+        // 3D rotasyon animasyonu
         .rotation3DEffect(
             sudokuModel.isGameComplete ? Angle(degrees: 360) : Angle(degrees: 0),
             axis: (x: 0.0, y: 1.0, z: 0.0)
@@ -744,19 +763,19 @@ struct ContentView: View {
         }) {
             ZStack {
                 // Arka plan
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(
-                        isSelected ? 
-                        themeColor.opacity(0.3) : 
-                        (isDarkMode ? Color.black.opacity(0.2) : Color.white.opacity(0.9))
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(backgroundColor)
+                    .frame(width: cellSize, height: cellSize)
+                    // Tüm hücreler için ince bir kenarlık ekle
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(isDarkMode ? Color.white.opacity(0.2) : Color.black.opacity(0.2), lineWidth: 0.5)
                     )
-                    .shadow(
-                        color: isSelected ? themeColor.opacity(0.5) : Color.black.opacity(0.1),
-                        radius: isSelected ? 4 : 2,
-                        x: 0,
-                        y: isSelected ? 2 : 1
-                    )
-                    .frame(width: buttonSize, height: buttonSize)
+                    // Hücre seçildiğinde animasyon
+                    .scaleEffect(isSelected ? 1.02 : 1.0)
+                    .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isSelected)
+                    // Hücre seçildiğinde hafif gölge efekti
+                    .shadow(color: isSelected ? themeColor.opacity(0.4) : Color.clear, radius: 1.5)
                 
                 // Sayı
                 Text("\(number)")
@@ -995,10 +1014,10 @@ struct SudokuBlock: View {
         }
         .background(blockBackground)
         .cornerRadius(6)
-        .padding(1.5) // Bloklar arası boşluğu artır
+        .padding(2) // Bloklar arası boşluğu arttırdım
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(isDarkMode ? Color.white.opacity(0.4) : Color.black.opacity(0.4), lineWidth: 1.5)
+                .stroke(isDarkMode ? Color.white.opacity(0.6) : Color.black.opacity(0.6), lineWidth: 2.5)
         )
     }
 }
@@ -1027,6 +1046,14 @@ struct SudokuCellView: View {
         }
     }()
     
+    private var isSelected: Bool {
+        sudokuModel.selectedCell?.row == row && sudokuModel.selectedCell?.col == col
+    }
+    
+    private var value: Int? {
+        sudokuModel.grid[row][col]
+    }
+    
     private var fontSize: CGFloat {
         cellSize * 0.6
     }
@@ -1037,14 +1064,6 @@ struct SudokuCellView: View {
     
     private var notesItemSize: CGFloat {
         cellSize * 0.3
-    }
-    
-    private var value: Int? {
-        sudokuModel.grid[row][col]
-    }
-    
-    private var isSelected: Bool {
-        sudokuModel.selectedCell?.row == row && sudokuModel.selectedCell?.col == col
     }
     
     private var isInSameRowOrCol: Bool {
@@ -1076,14 +1095,16 @@ struct SudokuCellView: View {
     
     private var backgroundColor: Color {
         if isSelected {
+            // Seçilen hücre
             return themeColor.opacity(0.3)
         } else if isHighlightedNumber && value != nil {
+            // Aynı sayıya sahip hücreler
             return themeColor.opacity(0.2)
         } else if isInSameRowOrCol {
-            return themeColor.opacity(0.08)
-        } else if isInSameBlock {
-            return themeColor.opacity(0.04)
+            // Aynı satır veya sütundaki hücreler
+            return themeColor.opacity(0.12)
         } else {
+            // Diğer tüm hücreler (3x3 blok dahil)
             return isDarkMode ? Color.black.opacity(0.1) : Color.white.opacity(0.7)
         }
     }
@@ -1114,21 +1135,16 @@ struct SudokuCellView: View {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(backgroundColor)
                     .frame(width: cellSize, height: cellSize)
+                    // Tüm hücreler için ince bir kenarlık ekle
                     .overlay(
                         RoundedRectangle(cornerRadius: 4)
-                            .stroke(isSelected ? themeColor : Color.clear, lineWidth: 2)
-                    )
-                    // Seçim animasyonu: Dalgalanma ve parlama efekti
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(isSelected ? themeColor.opacity(0.8) : Color.clear, lineWidth: 2)
-                            .scaleEffect(isSelected ? 1.1 : 1.0)
+                            .stroke(isDarkMode ? Color.white.opacity(0.2) : Color.black.opacity(0.2), lineWidth: 0.5)
                     )
                     // Hücre seçildiğinde animasyon
                     .scaleEffect(isSelected ? 1.02 : 1.0)
                     .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isSelected)
-                    // Hücre seçildiğinde satır ve sütun vurgusu
-                    .shadow(color: isSelected ? themeColor.opacity(0.5) : Color.clear, radius: 2)
+                    // Hücre seçildiğinde hafif gölge efekti
+                    .shadow(color: isSelected ? themeColor.opacity(0.4) : Color.clear, radius: 1.5)
                 
                 // Değer veya notlar
                 if let value = value {
@@ -1386,9 +1402,10 @@ struct LoadingView: View {
     
     var body: some View {
         ZStack {
+            // Arka plan
             RoundedRectangle(cornerRadius: 20)
-                .fill(isDarkMode ? Color.black.opacity(0.8) : Color.white.opacity(0.9))
-                .shadow(color: themeColor.opacity(0.3), radius: 15, x: 0, y: 5)
+                .fill(isDarkMode ? Color.black.opacity(0.95) : Color.white.opacity(0.95))
+                .shadow(color: themeColor.opacity(0.5), radius: 15, x: 0, y: 5)
                 .frame(width: 300, height: 250)
             
             VStack(spacing: 20) {
