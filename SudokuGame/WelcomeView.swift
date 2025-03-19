@@ -4,13 +4,13 @@ struct WelcomeView: View {
     @StateObject private var gameStats = GameStats()
     @StateObject private var lifecycleManager = AppLifecycleManager()
     @StateObject private var sudokuModel = SudokuModel()
+    @StateObject private var userModel = UserModel()
     @State private var isGameStarted = false
     @State private var selectedDifficulty: SudokuModel.Difficulty = .orta
     @State private var showingHowToPlay = false
     @State private var showingLogin = false
+    @State private var showingProfile = false
     @State private var showingEvents = false
-    @State private var isLoggedIn = false
-    @State private var username = ""
     @State private var timer: Timer? = nil
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
@@ -65,57 +65,35 @@ struct WelcomeView: View {
                         
                         // Kullanıcı girişi/profil butonu
                         Button(action: {
-                            showingLogin = true
+                            withAnimation {
+                                if userModel.isLoggedIn {
+                                    showingProfile = true
+                                } else {
+                                    showingLogin = true
+                                }
+                            }
                         }) {
                             HStack(spacing: 5) {
-                                Image(systemName: isLoggedIn ? "person.fill" : "person")
-                                    .font(.system(size: 16, weight: .semibold))
-                                Text(isLoggedIn ? username : "Giriş Yap")
-                                    .font(.subheadline)
+                                Image(systemName: userModel.isLoggedIn ? "person.circle.fill" : "person.circle")
+                                    .foregroundColor(primaryColor)
+                                if userModel.isLoggedIn {
+                                    Text(userModel.username)
+                                        .font(.caption)
+                                        .foregroundColor(primaryColor)
+                                }
                             }
-                            .foregroundColor(primaryColor)
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 12)
-                            .background(
-                                Capsule()
-                                    .stroke(primaryColor, lineWidth: 1.5)
-                                    .background(
-                                        Capsule()
-                                            .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
-                                    )
-                            )
                         }
-                        .sheet(isPresented: $showingLogin) {
-                            LoginView(isLoggedIn: $isLoggedIn, username: $username)
-                        }
-                        
-                        Spacer().frame(width: 10)
-                        
-                        // Etkinlikler butonu
-                        Button(action: {
-                            showingEvents = true
-                        }) {
-                            HStack(spacing: 5) {
-                                Image(systemName: "calendar")
-                                    .font(.system(size: 16, weight: .semibold))
-                                Text("Etkinlikler")
-                                    .font(.subheadline)
-                            }
-                            .foregroundColor(primaryColor)
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 12)
-                            .background(
-                                Capsule()
-                                    .stroke(primaryColor, lineWidth: 1.5)
-                                    .background(
-                                        Capsule()
-                                            .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
-                                    )
-                            )
-                        }
-                        .sheet(isPresented: $showingEvents) {
-                            EventsView()
-                        }
+                        .foregroundColor(primaryColor)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .background(
+                            Capsule()
+                                .stroke(primaryColor, lineWidth: 1.5)
+                                .background(
+                                    Capsule()
+                                        .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.7))
+                                )
+                        )
                     }
                     .padding(.horizontal)
                     .padding(.top, 10)
@@ -287,6 +265,35 @@ struct WelcomeView: View {
                 sudokuModel.saveGameState()
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    withAnimation {
+                        if userModel.isLoggedIn {
+                            showingProfile = true
+                        } else {
+                            showingLogin = true
+                        }
+                    }
+                }) {
+                    HStack(spacing: 5) {
+                        Image(systemName: userModel.isLoggedIn ? "person.circle.fill" : "person.circle")
+                            .foregroundColor(primaryColor)
+                        if userModel.isLoggedIn {
+                            Text(userModel.username)
+                                .font(.caption)
+                                .foregroundColor(primaryColor)
+                        }
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showingProfile) {
+            ProfileView(userModel: userModel)
+        }
+        .sheet(isPresented: $showingLogin) {
+            LoginView(userModel: userModel)
+        }
     }
     
     // Timer fonksiyonları
@@ -316,9 +323,9 @@ struct WelcomeView: View {
 struct LoginView: View {
     @Environment(\.presentationMode) var presentationMode
     @Environment(\.colorScheme) var colorScheme
-    @Binding var isLoggedIn: Bool
-    @Binding var username: String
+    @ObservedObject var userModel: UserModel
     
+    @State private var inputUsername = ""
     @State private var password = ""
     @State private var showingAlert = false
     @State private var alertMessage = ""
@@ -352,7 +359,7 @@ struct LoginView: View {
                         .foregroundColor(primaryColor)
                     
                     VStack(spacing: 20) {
-                        TextField("Kullanıcı Adı", text: $username)
+                        TextField("Kullanıcı Adı", text: $inputUsername)
                             .padding()
                             .background(Color(UIColor.systemBackground))
                             .cornerRadius(10)
@@ -365,13 +372,17 @@ struct LoginView: View {
                             .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
                         
                         Button(action: {
-                            if username.isEmpty || password.isEmpty {
+                            if inputUsername.isEmpty || password.isEmpty {
                                 alertMessage = "Kullanıcı adı ve şifre boş olamaz!"
                                 showingAlert = true
                             } else {
-                                // Gerçek uygulamada burada API çağrısı yapılır
-                                isLoggedIn = true
-                                presentationMode.wrappedValue.dismiss()
+                                // UserModel'in login metodunu kullan
+                                if userModel.login(username: inputUsername, password: password) {
+                                    presentationMode.wrappedValue.dismiss()
+                                } else {
+                                    alertMessage = "Kullanıcı adı veya şifre hatalı!"
+                                    showingAlert = true
+                                }
                             }
                         }) {
                             Text("Giriş Yap")
@@ -400,20 +411,22 @@ struct LoginView: View {
                     
                     Spacer()
                 }
-                .padding(.vertical)
                 .alert(isPresented: $showingAlert) {
                     Alert(title: Text("Hata"), message: Text(alertMessage), dismissButton: .default(Text("Tamam")))
                 }
                 .sheet(isPresented: $showingRegister) {
-                    RegisterView()
+                    RegisterView(userModel: userModel, presentationMode: _presentationMode)
                 }
             }
             .navigationTitle("Giriş")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Kapat") {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
                         presentationMode.wrappedValue.dismiss()
+                    }) {
+                        Image(systemName: "xmark")
+                            .foregroundColor(primaryColor)
                     }
                 }
             }
@@ -532,8 +545,9 @@ struct EventItem: Identifiable {
 
 // Kayıt Ol Ekranı
 struct RegisterView: View {
-    @Environment(\.presentationMode) var presentationMode
     @Environment(\.colorScheme) var colorScheme
+    @ObservedObject var userModel: UserModel
+    @Binding var presentationMode: PresentationMode
     
     @State private var username = ""
     @State private var email = ""
@@ -541,6 +555,7 @@ struct RegisterView: View {
     @State private var confirmPassword = ""
     @State private var showingAlert = false
     @State private var alertMessage = ""
+    @State private var registrationSuccess = false
     
     private var primaryColor: Color {
         colorScheme == .dark ? Color.purple : Color.blue
@@ -605,9 +620,15 @@ struct RegisterView: View {
                                     alertMessage = "Şifreler eşleşmiyor!"
                                     showingAlert = true
                                 } else {
-                                    // Kayıt işlemi
-                                    alertMessage = "Kayıt başarılı! Giriş yapabilirsiniz."
-                                    showingAlert = true
+                                    // UserModel'in register metodunu kullan
+                                    if userModel.register(username: username, email: email, password: password) {
+                                        registrationSuccess = true
+                                        alertMessage = "Kayıt başarılı! Giriş yapabilirsiniz."
+                                        showingAlert = true
+                                    } else {
+                                        alertMessage = "Kayıt sırasında bir hata oluştu!"
+                                        showingAlert = true
+                                    }
                                 }
                             }) {
                                 Text("Kayıt Ol")
@@ -624,7 +645,7 @@ struct RegisterView: View {
                             }
                             
                             Button(action: {
-                                presentationMode.wrappedValue.dismiss()
+                                self.presentationMode.dismiss()
                             }) {
                                 Text("Zaten hesabınız var mı? Giriş yapın")
                                     .font(.footnote)
@@ -634,26 +655,31 @@ struct RegisterView: View {
                         }
                         .padding(.horizontal, 30)
                         
-                        Spacer()
+                        Spacer().frame(height: 50)
                     }
-                    .padding(.vertical)
                 }
                 .alert(isPresented: $showingAlert) {
-                    Alert(title: Text(alertMessage.contains("başarılı") ? "Başarılı" : "Hata"), 
-                          message: Text(alertMessage), 
-                          dismissButton: .default(Text("Tamam")) {
-                              if alertMessage.contains("başarılı") {
-                                  presentationMode.wrappedValue.dismiss()
-                              }
-                          })
+                    Alert(
+                        title: Text(registrationSuccess ? "Başarılı" : "Uyarı"),
+                        message: Text(alertMessage),
+                        dismissButton: .default(Text("Tamam")) {
+                            if registrationSuccess {
+                                // Kayıt başarılıysa, kayıt ekranını kapat ve giriş ekranına dön
+                                self.presentationMode.dismiss()
+                            }
+                        }
+                    )
                 }
             }
             .navigationTitle("Kayıt Ol")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Kapat") {
-                        presentationMode.wrappedValue.dismiss()
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        self.presentationMode.dismiss()
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .foregroundColor(primaryColor)
                     }
                 }
             }

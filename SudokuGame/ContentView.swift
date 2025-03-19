@@ -99,8 +99,10 @@ enum ThemeColor: String, CaseIterable, Identifiable {
 struct ContentView: View {
     @StateObject private var sudokuModel = SudokuModel()
     @StateObject private var lifecycleManager = AppLifecycleManager()
+    @StateObject private var userModel = UserModel()
     @State private var showingHowToPlay = false
     @State private var showingSettings = false
+    @State private var showingProfile = false
     @State private var selectedNumber: Int? = nil
     @State private var timer: Timer? = nil
     @State private var showingDifficultyPicker = false
@@ -320,21 +322,10 @@ struct ContentView: View {
             HowToPlayView()
         }
         .sheet(isPresented: $showingSettings) {
-            SettingsView(isPresented: $showingSettings, themeColor: Binding(
-                get: { self.selectedTheme },
-                set: { self.selectedThemeRaw = $0.rawValue }
-            ), sudokuModel: sudokuModel, userColorScheme: Binding(
-                get: { self.userColorScheme },
-                set: { 
-                    switch $0 {
-                    case .light: self.userColorSchemeRaw = "light"
-                    case .dark: self.userColorSchemeRaw = "dark"
-                    case .none: self.userColorSchemeRaw = "system"
-                    @unknown default: self.userColorSchemeRaw = "system"
-                    }
-                    UserDefaults.standard.synchronize()
-                }
-            ))
+            SettingsView(themeColor: themeColor, selectedThemeRaw: $selectedThemeRaw, userColorSchemeRaw: $userColorSchemeRaw)
+        }
+        .sheet(isPresented: $showingProfile) {
+            ProfileView(userModel: userModel)
         }
         .sheet(isPresented: $showingDifficultyPicker) {
             DifficultyPickerView(difficulty: $sudokuModel.difficulty, themeColor: themeColor)
@@ -394,20 +385,15 @@ struct ContentView: View {
     private var topBarView: some View {
         HStack {
             Button(action: {
-                // Ana menüye dön
-                stopTimer()
-                shouldShowWelcomeScreen = true
-                
-                // Zorla UI yenileme için
-                DispatchQueue.main.async {
-                    // Welcome ekranını göstermeyi zorla
-                    self.shouldShowWelcomeScreen = true
+                // Hoş geldiniz ekranını göster
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                    showingHowToPlay.toggle()
                 }
             }) {
                 HStack(spacing: 5) {
-                    Image(systemName: "house.fill")
+                    Image(systemName: "questionmark.circle")
                         .font(.system(size: UIScreen.main.bounds.width >= 390 ? 18 : 16))
-                    Text("Ana Sayfa")
+                    Text("Nasıl Oynanır")
                         .font(.system(size: UIScreen.main.bounds.width >= 390 ? 14 : 12, weight: .medium))
                 }
                 .foregroundColor(isDarkMode ? .white : .black)
@@ -420,6 +406,33 @@ struct ContentView: View {
                 )
             }
             .padding(.leading, numberButtonPadding)
+            
+            Spacer()
+            
+            // Profil butonu
+            if userModel.isLoggedIn {
+                Button(action: {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                        showingProfile.toggle()
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: userModel.profileImageName)
+                            .font(.system(size: UIScreen.main.bounds.width >= 390 ? 16 : 14))
+                        Text(userModel.username)
+                            .font(.system(size: UIScreen.main.bounds.width >= 390 ? 12 : 10, weight: .medium))
+                            .lineLimit(1)
+                    }
+                    .foregroundColor(themeColor)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .background(
+                        Capsule()
+                            .fill(themeColor.opacity(0.1))
+                            .shadow(color: themeColor.opacity(0.2), radius: 2, x: 0, y: 1)
+                    )
+                }
+            }
             
             Spacer()
             
@@ -1427,125 +1440,210 @@ struct LoadingView: View {
 }
 
 struct SettingsView: View {
-    @Binding var isPresented: Bool
-    @Binding var themeColor: ThemeColor
-    @ObservedObject var sudokuModel: SudokuModel
+    @Environment(\.presentationMode) var presentationMode
     @Environment(\.colorScheme) var colorScheme
-    @Binding var userColorScheme: ColorScheme?
-    @AppStorage("userColorScheme") private var userColorSchemeRaw: String = "system"
+    
+    var themeColor: Color
+    @Binding var selectedThemeRaw: String
+    @Binding var userColorSchemeRaw: String
     
     private var isDarkMode: Bool {
-        userColorScheme == .dark || (userColorScheme == nil && colorScheme == .dark)
+        switch userColorSchemeRaw {
+        case "dark": return true
+        case "light": return false
+        default: return colorScheme == .dark
+        }
     }
     
-    private let themeColors: [ThemeColor] = ThemeColor.allCases
-    
     var body: some View {
-        VStack(spacing: 20) {
-            HStack {
-                Text("Ayarlar")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .foregroundColor(isDarkMode ? .white : .black)
+        NavigationStack {
+            ZStack {
+                // Arka plan
+                LinearGradient(gradient: Gradient(colors: isDarkMode ? 
+                                                 [Color.blue.opacity(0.1), Color.purple.opacity(0.2), Color.black.opacity(0.3)] : 
+                                                 [Color.blue.opacity(0.1), Color.purple.opacity(0.1), Color.white.opacity(0.2)]),
+                             startPoint: .topLeading,
+                             endPoint: .bottomTrailing)
+                    .ignoresSafeArea()
                 
-                Spacer()
-                
-                Button(action: {
-                    withAnimation {
-                        isPresented = false
-                    }
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.gray)
-                }
-            }
-            .padding(.bottom, 10)
-            
-            // Zorluk seviyesi ayarı
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Zorluk Seviyesi")
-                    .font(.headline)
-                    .foregroundColor(isDarkMode ? .white : .black)
-                
-                HStack {
-                    ForEach(SudokuModel.Difficulty.allCases, id: \.self) { difficulty in
-                        Button(action: {
-                            sudokuModel.difficulty = difficulty
-                        }) {
-                            Text(difficulty.rawValue)
-                                .padding(.horizontal, 15)
-                                .padding(.vertical, 8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(sudokuModel.difficulty == difficulty ? 
-                                              themeColor.mainColor.opacity(0.3) : 
-                                              (isDarkMode ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)))
-                                )
-                                .foregroundColor(sudokuModel.difficulty == difficulty ? 
-                                                themeColor.mainColor : 
-                                                (isDarkMode ? .white : .black))
-                        }
-                    }
-                }
-            }
-            .padding(.bottom, 10)
-            
-            // Tema rengi ayarı
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Tema Rengi")
-                    .font(.headline)
-                    .foregroundColor(isDarkMode ? .white : .black)
-                
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 15) {
-                    ForEach(themeColors, id: \.self) { color in
-                        Circle()
-                            .fill(color.mainColor)
-                            .frame(width: 40, height: 40)
-                            .overlay(
-                                Circle()
-                                    .stroke(color == themeColor ? .white : .clear, lineWidth: 2)
-                            )
-                            .shadow(color: color.mainColor.opacity(0.5), radius: 3, x: 0, y: 2)
-                            .onTapGesture {
-                                withAnimation {
-                                    themeColor = color
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Tema Seçimi
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Tema Rengi")
+                                .font(.headline)
+                                .foregroundColor(themeColor)
+                            
+                            HStack(spacing: 15) {
+                                ForEach(ThemeColor.allCases, id: \.self) { theme in
+                                    Button(action: {
+                                        selectedThemeRaw = theme.rawValue
+                                    }) {
+                                        Circle()
+                                            .fill(theme.mainColor)
+                                            .frame(width: 40, height: 40)
+                                            .overlay(
+                                                Circle()
+                                                    .stroke(Color.white, lineWidth: selectedThemeRaw == theme.rawValue ? 3 : 0)
+                                            )
+                                            .shadow(color: theme.mainColor.opacity(0.5), radius: 5, x: 0, y: 3)
+                                    }
                                 }
                             }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white.opacity(0.9))
+                            )
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 3)
+                        }
+                        .padding(.horizontal)
+                        
+                        // Görünüm Modu
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Görünüm Modu")
+                                .font(.headline)
+                                .foregroundColor(themeColor)
+                            
+                            VStack(spacing: 10) {
+                                Button(action: {
+                                    userColorSchemeRaw = "light"
+                                    UserDefaults.standard.synchronize()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "sun.max.fill")
+                                            .foregroundColor(.orange)
+                                        
+                                        Text("Açık Mod")
+                                            .foregroundColor(isDarkMode ? .white : .black)
+                                        
+                                        Spacer()
+                                        
+                                        if userColorSchemeRaw == "light" {
+                                            Image(systemName: "checkmark")
+                                                .foregroundColor(themeColor)
+                                        }
+                                    }
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
+                                    )
+                                }
+                                
+                                Button(action: {
+                                    userColorSchemeRaw = "dark"
+                                    UserDefaults.standard.synchronize()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "moon.fill")
+                                            .foregroundColor(.purple)
+                                        
+                                        Text("Koyu Mod")
+                                            .foregroundColor(isDarkMode ? .white : .black)
+                                        
+                                        Spacer()
+                                        
+                                        if userColorSchemeRaw == "dark" {
+                                            Image(systemName: "checkmark")
+                                                .foregroundColor(themeColor)
+                                        }
+                                    }
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
+                                    )
+                                }
+                                
+                                Button(action: {
+                                    userColorSchemeRaw = "system"
+                                    UserDefaults.standard.synchronize()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "gear")
+                                            .foregroundColor(.gray)
+                                        
+                                        Text("Sistem Ayarı")
+                                            .foregroundColor(isDarkMode ? .white : .black)
+                                        
+                                        Spacer()
+                                        
+                                        if userColorSchemeRaw == "system" {
+                                            Image(systemName: "checkmark")
+                                                .foregroundColor(themeColor)
+                                        }
+                                    }
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white)
+                                    )
+                                }
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white.opacity(0.9))
+                            )
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 3)
+                        }
+                        .padding(.horizontal)
+                        
+                        // Uygulama Hakkında
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Hakkında")
+                                .font(.headline)
+                                .foregroundColor(themeColor)
+                            
+                            VStack(alignment: .leading, spacing: 15) {
+                                HStack {
+                                    Image(systemName: "app.fill")
+                                        .foregroundColor(themeColor)
+                                    Text("Sudoku Oyunu")
+                                        .foregroundColor(isDarkMode ? .white : .black)
+                                    Spacer()
+                                    Text("Sürüm 1.0.0")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                                
+                                HStack {
+                                    Image(systemName: "envelope.fill")
+                                        .foregroundColor(themeColor)
+                                    Text("İletişim: ")
+                                        .foregroundColor(isDarkMode ? .white : .black)
+                                    Text("destek@sudoku.com")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(isDarkMode ? Color.black.opacity(0.3) : Color.white.opacity(0.9))
+                            )
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 3)
+                        }
+                        .padding(.horizontal)
+                    }
+                    .padding(.vertical)
+                }
+            }
+            .navigationTitle("Ayarlar")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        presentationMode.wrappedValue.dismiss()
+                    }) {
+                        Image(systemName: "xmark")
+                            .foregroundColor(themeColor)
                     }
                 }
             }
-            .padding(.bottom, 10)
-            
-            // Yeni oyun butonu
-            Button(action: {
-                withAnimation {
-                    sudokuModel.generateNewGame()
-                    isPresented = false
-                }
-            }) {
-                Text("Yeni Oyun Başlat")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(themeColor.mainColor)
-                    )
-                    .shadow(color: themeColor.mainColor.opacity(0.3), radius: 5, x: 0, y: 2)
-            }
-            
-            Spacer()
         }
-        .padding()
-        .frame(maxWidth: 400)
-        .background(
-            RoundedRectangle(cornerRadius: 15)
-                .fill(isDarkMode ? Color(UIColor.systemBackground) : Color.white)
-                .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
-        )
-        .padding()
     }
 }
 
